@@ -2,6 +2,31 @@ const express = require("express");
 const serverless = require("serverless-http");
 const path = require("path");
 const cookieParser = require("cookie-parser");
+const fs = require("fs");
+
+// Helper function to resolve paths
+const resolvePath = (relativePath) => {
+  // First try from process.cwd()
+  const cwdPath = path.join(process.cwd(), relativePath);
+  if (fs.existsSync(cwdPath)) {
+    return cwdPath;
+  }
+
+  // Then try from /var/task
+  const taskPath = path.join("/var/task", relativePath);
+  if (fs.existsSync(taskPath)) {
+    return taskPath;
+  }
+
+  // Finally try from __dirname
+  const dirPath = path.join(__dirname, "../../", relativePath);
+  if (fs.existsSync(dirPath)) {
+    return dirPath;
+  }
+
+  console.warn(`Could not resolve path for: ${relativePath}`);
+  return cwdPath; // Return default path even if it doesn't exist
+};
 
 // Import the app but wrap in try-catch to handle potential errors
 let app;
@@ -14,24 +39,63 @@ try {
   baseApp.use(express.urlencoded({ extended: true, limit: "50mb" }));
   baseApp.use(cookieParser());
 
-  // Configure view engine for serverless environment
-  baseApp.set("views", path.join(__dirname, "../../views"));
+  // Resolve paths
+  const viewsPath = resolvePath("views");
+  const publicPath = resolvePath("public");
+
+  console.log("Paths resolved:", {
+    views: viewsPath,
+    public: publicPath,
+    cwd: process.cwd(),
+    dirname: __dirname,
+  });
+
+  // Configure view engine and static files
+  baseApp.set("views", viewsPath);
   baseApp.set("view engine", "ejs");
+  baseApp.use(express.static(publicPath));
 
   // Import main app
   const mainApp = require("../../app");
 
+  // Ensure paths are set correctly in the main app
+  mainApp.set("views", viewsPath);
+  mainApp.use(express.static(publicPath));
+
   // Merge the apps
   app = mainApp || baseApp;
+
+  // Add path check middleware
+  app.use((req, res, next) => {
+    console.log("Request path:", req.path);
+    console.log("Available views:", fs.readdirSync(viewsPath));
+    if (req.path.startsWith("/images/")) {
+      console.log("Checking image:", path.join(publicPath, req.path));
+    }
+    next();
+  });
+
+  // Override render to add debugging
+  const originalRender = app.render.bind(app);
+  app.render = function (name, options, callback) {
+    console.log("Rendering view:", name);
+    console.log("Views directory:", this.get("views"));
+    console.log("View engine:", this.get("view engine"));
+    return originalRender(name, options, callback);
+  };
 } catch (error) {
   console.error("Error importing app:", error);
-  // Create a basic error app if main app fails to import
   app = express();
   app.use((req, res) => {
     res.status(500).json({
       error: "Server configuration error",
       details: error.message,
-      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+      paths: {
+        cwd: process.cwd(),
+        dirname: __dirname,
+        views: resolvePath("views"),
+        public: resolvePath("public"),
+      },
     });
   });
 }
@@ -43,6 +107,18 @@ if (!app._router) {
   app.use(cookieParser());
 }
 
+// Add view engine check middleware
+app.use((req, res, next) => {
+  const originalRender = res.render;
+  res.render = function (view, options, callback) {
+    console.log("Rendering view:", view);
+    console.log("Views directory:", app.get("views"));
+    console.log("Available views:", fs.readdirSync(app.get("views")));
+    return originalRender.call(this, view, options, callback);
+  };
+  next();
+});
+
 // Add error handling middleware if not present
 if (!app._router.stack.some((layer) => layer.name === "errorHandler")) {
   app.use((err, req, res, next) => {
@@ -50,6 +126,7 @@ if (!app._router.stack.some((layer) => layer.name === "errorHandler")) {
     res.status(err.status || 500).json({
       error: err.message || "Internal Server Error",
       details: process.env.NODE_ENV === "development" ? err.stack : undefined,
+      viewsPath: app.get("views"),
     });
   });
 }
@@ -121,6 +198,12 @@ exports.handler = async (event, context) => {
       };
     }
 
+    // Handle static files
+    if (event.path.startsWith("/images/")) {
+      const imagePath = resolvePath(path.join("public", event.path));
+      console.log("Serving image from:", imagePath);
+    }
+
     // Handle view responses
     if (
       response.headers &&
@@ -157,6 +240,12 @@ exports.handler = async (event, context) => {
         message: error.message,
         details:
           process.env.NODE_ENV === "development" ? error.stack : undefined,
+        paths: {
+          cwd: process.cwd(),
+          dirname: __dirname,
+          views: resolvePath("views"),
+          public: resolvePath("public"),
+        },
       }),
       headers: {
         "Content-Type": "application/json",

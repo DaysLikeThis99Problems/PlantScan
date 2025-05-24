@@ -18,9 +18,14 @@
     "pdfkit"
   ]
   included_files = [
-    "views/**",
-    "public/**"
+    "views/*",
+    "views/**/*",
+    "public/*",
+    "public/**/*",
+    "public/images/*",
+    "public/images/**/*"
   ]
+  directory = "netlify/functions"
 
 [dev]
   framework = "#custom"
@@ -30,10 +35,21 @@
   publish = "public"
 
 [[redirects]]
+  from = "/images/*"
+  to = "/.netlify/functions/server/images/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/*"
   to = "/.netlify/functions/server"
   status = 200
   force = true
+
+[[headers]]
+  for = "/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000"
 
 [[headers]]
   for = "/*"

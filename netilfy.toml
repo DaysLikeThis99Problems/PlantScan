@@ -1,4 +1,0 @@
-[build]
-node_version = "18"  # Change this to your required version
-command = "npm run build"
-publish = "dist"  # Change this if needed
