@@ -238,10 +238,6 @@ app.get("/logout", (req, res) => {
 //
 //
 //
-//configure multer
-const upload = multer({ dest: "upload/" });
-//=====upload file to cloud
-
 //Configure cloudinary
 cloudinary.config({
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -386,15 +382,17 @@ app.post("/analyze", uploadMiddleware.single("image"), async (req, res) => {
 app.post("/download", async (req, res) => {
   const { result, image } = req.body;
   try {
-    //Ensure the reports directory exists
-    const reportsDir = path.join(__dirname, "reports");
-    await fsPromises.mkdir(reportsDir, { recursive: true });
-    //generate pdf
-    const filename = `plant_analysis_report_${Date.now()}.pdf`;
-    const filePath = path.join(reportsDir, filename);
-    const writeStream = fs.createWriteStream(filePath);
+    // Set response headers for PDF download
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=plant_analysis_report_${Date.now()}.pdf`
+    );
+
+    // Create PDF document and pipe directly to response
     const doc = new PDFDocument();
-    doc.pipe(writeStream);
+    doc.pipe(res);
+
     // Add content to the PDF
     doc.fontSize(24).text("Plant Analysis Report", {
       align: "center",
@@ -403,6 +401,7 @@ app.post("/download", async (req, res) => {
     doc.fontSize(24).text(`Date: ${new Date().toLocaleDateString()}`);
     doc.moveDown();
     doc.fontSize(14).text(result, { align: "left" });
+
     //insert image to the pdf
     if (image) {
       const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
@@ -414,18 +413,9 @@ app.post("/download", async (req, res) => {
         valign: "center",
       });
     }
+
+    // Finalize PDF file
     doc.end();
-    //wait for the pdf to be created
-    await new Promise((resolve, reject) => {
-      writeStream.on("finish", resolve);
-      writeStream.on("error", reject);
-    });
-    res.download(filePath, (err) => {
-      if (err) {
-        res.status(500).json({ error: "Error downloading the PDF report" });
-      }
-      fsPromises.unlink(filePath);
-    });
   } catch (error) {
     console.error("Error generating PDF report:", error);
     res
@@ -492,18 +482,16 @@ app.get("/download-history", isAuthenticated, async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Create PDF
+    // Set response headers for PDF download
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=plant_analysis_history_${Date.now()}.pdf`
+    );
+
+    // Create PDF document and pipe directly to response
     const doc = new PDFDocument();
-    const filename = `plant_analysis_history_${Date.now()}.pdf`;
-    const filePath = path.join(__dirname, "reports", filename);
-
-    // Ensure reports directory exists
-    await fsPromises.mkdir(path.join(__dirname, "reports"), {
-      recursive: true,
-    });
-
-    const writeStream = fs.createWriteStream(filePath);
-    doc.pipe(writeStream);
+    doc.pipe(res);
 
     // Add content to PDF
     doc.fontSize(24).text("Plant Analysis History", {
@@ -532,23 +520,8 @@ app.get("/download-history", isAuthenticated, async (req, res) => {
       doc.fontSize(12).text("No scans found in history.");
     }
 
+    // Finalize PDF file
     doc.end();
-
-    // Wait for PDF to be created
-    await new Promise((resolve, reject) => {
-      writeStream.on("finish", resolve);
-      writeStream.on("error", reject);
-    });
-
-    // Send file
-    res.download(filePath, (err) => {
-      if (err) {
-        console.error("Error downloading history:", err);
-        res.status(500).json({ error: "Error downloading history" });
-      }
-      // Clean up file
-      fsPromises.unlink(filePath);
-    });
   } catch (error) {
     console.error("Error generating history:", error);
     res.status(500).json({ error: "Error generating history" });
