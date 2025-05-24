@@ -1,13 +1,13 @@
 [build]
   command = "npm run build"
-  publish = "."
-  functions = "functions"
+  publish = "public"
+  functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "18"
 
 [[redirects]]
   from = "/*"
-  to = "/app.js"
+  to = "/.netlify/functions/server"
   status = 200 
   
