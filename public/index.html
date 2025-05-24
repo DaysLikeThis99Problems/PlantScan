@@ -2,45 +2,561 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Home Page</title>
+    <title>PlantScan - Advanced Plant Analysis Tool</title>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
       rel="stylesheet"
     />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+      rel="stylesheet"
+    />
     <style>
+      :root {
+        --primary-color: #2ecc71;
+        --secondary-color: #3498db;
+        --dark-color: #2c3e50;
+        --light-color: #ecf0f1;
+        --transition-speed: 0.3s;
+        --bounce-timing: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6;
+        overflow-x: hidden;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      }
+
       .hero-section {
-        background-color: #343a40;
+        min-height: 100vh;
+        background: linear-gradient(
+          135deg,
+          var(--dark-color),
+          var(--primary-color)
+        );
         color: white;
         padding: 4rem 0;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
       }
+
+      .hero-section::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1IiBoZWlnaHQ9IjUiPgo8cmVjdCB3aWR0aD0iNSIgaGVpZ2h0PSI1IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMSI+PC9yZWN0Pgo8L3N2Zz4=");
+        opacity: 0.1;
+        animation: fadeIn 2s ease-out;
+      }
+
+      .hero-content {
+        position: relative;
+        z-index: 1;
+        animation: slideUp 1s var(--bounce-timing);
+      }
+
+      .display-4 {
+        font-size: 4rem;
+        font-weight: bold;
+        margin-bottom: 1.5rem;
+        animation: fadeInUp 0.8s var(--bounce-timing) 0.2s backwards;
+      }
+
+      .lead {
+        font-size: 1.8rem;
+        margin-bottom: 2rem;
+        animation: fadeInUp 0.8s var(--bounce-timing) 0.4s backwards;
+      }
+
+      .plant-icon {
+        font-size: 4rem;
+        color: var(--light-color);
+        animation: bounce 2s infinite;
+        margin: 1rem 0;
+      }
+
+      .cta-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        animation: fadeInUp 0.8s var(--bounce-timing) 0.6s backwards;
+      }
+
       .cta-button {
-        padding: 15px 25px;
-        font-size: 18px;
+        padding: 1rem 2rem;
+        font-size: 1.2rem;
+        border-radius: 50px;
+        border: none;
+        cursor: pointer;
+        transition: all var(--transition-speed);
+        position: relative;
+        overflow: hidden;
+        z-index: 1;
+      }
+
+      .cta-button.primary {
+        background: var(--light-color);
+        color: var(--dark-color);
+      }
+
+      .cta-button.secondary {
+        background: transparent;
+        border: 2px solid var(--light-color);
+        color: var(--light-color);
+      }
+
+      .cta-button:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      }
+
+      .cta-button::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          120deg,
+          transparent,
+          rgba(255, 255, 255, 0.2),
+          transparent
+        );
+        transition: all 0.6s;
+      }
+
+      .cta-button:hover::before {
+        left: 100%;
+      }
+
+      .features-section {
+        padding: 5rem 0;
+        animation: fadeIn 1s ease-out 0.8s backwards;
+      }
+
+      .feature-card {
+        background: white;
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        transition: all var(--transition-speed);
+        animation: fadeInUp 0.8s var(--bounce-timing) backwards;
+      }
+
+      .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+      }
+
+      .feature-icon {
+        font-size: 2.5rem;
+        color: var(--primary-color);
+        margin-bottom: 1rem;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(30px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes slideUp {
+        from {
+          opacity: 0;
+          transform: translateY(100px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes bounce {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-20px);
+        }
+      }
+
+      .scroll-down {
+        position: absolute;
+        bottom: 2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        animation: bounce 2s infinite;
+        color: var(--light-color);
+        cursor: pointer;
+        font-size: 2rem;
+      }
+
+      .footer {
+        background: linear-gradient(135deg, var(--dark-color), #1a252f);
+        color: var(--light-color);
+        padding: 4rem 0 2rem;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .footer::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(
+          to right,
+          var(--primary-color),
+          var(--secondary-color)
+        );
+      }
+
+      .footer-content {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 2rem;
+        margin-bottom: 3rem;
+      }
+
+      .footer-section {
+        animation: fadeInUp 0.8s var(--bounce-timing) backwards;
+      }
+
+      .footer-section h3 {
+        color: var(--primary-color);
+        margin-bottom: 1.5rem;
+        font-size: 1.4rem;
+      }
+
+      .footer-links {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .footer-links li {
+        margin-bottom: 0.8rem;
+      }
+
+      .footer-links a {
+        color: var(--light-color);
+        text-decoration: none;
+        transition: all var(--transition-speed);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .footer-links a:hover {
+        color: var(--primary-color);
+        transform: translateX(5px);
+      }
+
+      .social-links {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1rem;
+      }
+
+      .social-link {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--light-color);
+        text-decoration: none;
+        transition: all var(--transition-speed);
+      }
+
+      .social-link:hover {
+        background: var(--primary-color);
+        transform: translateY(-3px);
+      }
+
+      .contact-info {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        color: var(--light-color);
+      }
+
+      .footer-bottom {
+        text-align: center;
+        padding-top: 2rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      .credits {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 1rem;
+        font-size: 0.8rem;
+      }
+
+      .credits a {
+        color: var(--primary-color);
+        text-decoration: none;
+      }
+
+      .credits a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 768px) {
+        .footer-content {
+          grid-template-columns: 1fr;
+          text-align: center;
+        }
+
+        .social-links {
+          justify-content: center;
+        }
+
+        .contact-info {
+          justify-content: center;
+        }
       }
     </style>
   </head>
   <body>
-    <section class="hero-section text-center">
-      <div class="container">
-        <h1 class="display-4">PlantScan 🌱</h1>
-        <p class="lead">Know Your Plant</p>
-        <a href="/login" class="btn btn-primary cta-button">Get Started</a>
-        <a href="/register" class="btn btn-primary cta-button">Get Registered</a>
+    <section class="hero-section">
+      <div class="container hero-content text-center">
+        <i class="fas fa-leaf plant-icon"></i>
+        <h1 class="display-4">PlantScan <i class="fas fa-seedling"></i></h1>
+        <p class="lead">Discover, Analyze, and Learn About Your Plants</p>
+        <div class="cta-buttons">
+          <a href="/login" class="cta-button primary">
+            Get Started <i class="fas fa-arrow-right"></i>
+          </a>
+          <a href="/register" class="cta-button secondary">
+            Sign Up <i class="fas fa-user-plus"></i>
+          </a>
+        </div>
+      </div>
+      <div class="scroll-down">
+        <i class="fas fa-chevron-down"></i>
       </div>
     </section>
 
-    <div class="container my-5">
-      <h2>Concepts Used</h2>
-      <ul>
-        <li>Cookie-Based Authentication</li>
-        <li>EJS Templating Engine</li>
-        <li>Express.js Framework</li>
-      </ul>
+    <section class="features-section">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-4" style="animation-delay: 0.2s">
+            <div class="feature-card">
+              <i class="fas fa-camera feature-icon"></i>
+              <h3>Instant Analysis</h3>
+              <p>
+                Upload a photo of any plant and get detailed information
+                instantly using advanced AI technology.
+              </p>
+            </div>
+          </div>
+          <div class="col-md-4" style="animation-delay: 0.4s">
+            <div class="feature-card">
+              <i class="fas fa-leaf feature-icon"></i>
+              <h3>Plant Database</h3>
+              <p>
+                Access our comprehensive database of plants, including care
+                instructions and growing tips.
+              </p>
+            </div>
+          </div>
+          <div class="col-md-4" style="animation-delay: 0.6s">
+            <div class="feature-card">
+              <i class="fas fa-history feature-icon"></i>
+              <h3>Track Progress</h3>
+              <p>
+                Keep a detailed history of your plants and track their growth
+                over time.
+              </p>
+            </div>
+          </div>
+        </div>
 
-      <h2 class="mt-4">Project Description</h2>
-      <p>
-        Lorem ipsum dolor sit, amet consectetur adipisicing elit. Quaerat, amet. Sapiente asperiores, excepturi nemo numquam esse ut. Eveniet hic neque quas labore ratione optio magnam non? Natus dolor molestiae voluptate!
-      </p>
-    </div>
+        <div class="row mt-5">
+          <div class="col-md-6" style="animation-delay: 0.8s">
+            <div class="feature-card">
+              <h2>Advanced Technology</h2>
+              <ul class="list-unstyled">
+                <li>
+                  <i class="fas fa-check text-success"></i> Cookie-Based
+                  Authentication
+                </li>
+                <li>
+                  <i class="fas fa-check text-success"></i> EJS Templating
+                  Engine
+                </li>
+                <li>
+                  <i class="fas fa-check text-success"></i> Express.js Framework
+                </li>
+                <li>
+                  <i class="fas fa-check text-success"></i> AI-Powered Analysis
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="col-md-6" style="animation-delay: 1s">
+            <div class="feature-card">
+              <h2>About PlantScan</h2>
+              <p>
+                PlantScan is your intelligent companion for plant identification
+                and care. Using advanced AI technology, we help you identify
+                plants, track their growth, and provide personalized care
+                recommendations.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div class="container">
+        <div class="footer-content">
+          <div class="footer-section" style="animation-delay: 0.2s">
+            <h3>About PlantScan</h3>
+            <p>
+              PlantScan is your intelligent companion for plant identification
+              and care. We use advanced AI technology to help you better
+              understand and care for your plants.
+            </p>
+            <div class="social-links">
+              <a href="#" class="social-link" title="Follow us on Twitter">
+                <i class="fab fa-twitter"></i>
+              </a>
+              <a href="#" class="social-link" title="Follow us on Instagram">
+                <i class="fab fa-instagram"></i>
+              </a>
+              <a href="#" class="social-link" title="Follow us on Facebook">
+                <i class="fab fa-facebook-f"></i>
+              </a>
+              <a href="#" class="social-link" title="Join our Discord">
+                <i class="fab fa-discord"></i>
+              </a>
+            </div>
+          </div>
+
+          <div class="footer-section" style="animation-delay: 0.4s">
+            <h3>Quick Links</h3>
+            <ul class="footer-links">
+              <li>
+                <a href="/"><i class="fas fa-home"></i> Home</a>
+              </li>
+              <li>
+                <a href="/login"><i class="fas fa-sign-in-alt"></i> Login</a>
+              </li>
+              <li>
+                <a href="/register"
+                  ><i class="fas fa-user-plus"></i> Register</a
+                >
+              </li>
+              <li>
+                <a href="#features"><i class="fas fa-leaf"></i> Features</a>
+              </li>
+              <li>
+                <a href="#about"><i class="fas fa-info-circle"></i> About Us</a>
+              </li>
+            </ul>
+          </div>
+
+          <div class="footer-section" style="animation-delay: 0.6s">
+            <h3>Contact Us</h3>
+            <div class="contact-info">
+              <i class="fas fa-envelope"></i>
+              <span>poshiyasoham2765@gmail.com</span>
+            </div>
+            <div class="contact-info">
+              <i class="fas fa-phone"></i>
+              <span>+91 9574526697</span>
+            </div>
+            <div class="contact-info">
+              <i class="fas fa-map-marker-alt"></i>
+              <span>Pune, Maharashtra, India</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer-bottom">
+          <p>Soham Poshiya &copy; 2024 PlantScan. All rights reserved.</p>
+          <div class="credits">
+            <span>Developed by</span>
+            <a
+              href="https://github.com/DaysLikeThis99Problems"
+              target="https://github.com/DaysLikeThis99Problems"
+            >
+              <i class="fab fa-github"></i> Soham Poshiya
+            </a>
+            <span>|</span>
+            <span>Powered by</span>
+            <a href="https://nodejs.org" target="_blank">Node.js</a>
+            <span>&</span>
+            <a href="https://expressjs.com" target="_blank">Express</a>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      // Smooth scroll functionality
+      document.querySelector(".scroll-down").addEventListener("click", () => {
+        document.querySelector(".features-section").scrollIntoView({
+          behavior: "smooth",
+        });
+      });
+
+      // Animate features on scroll
+      const observerOptions = {
+        threshold: 0.1,
+      };
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.style.opacity = "1";
+            entry.target.style.transform = "translateY(0)";
+          }
+        });
+      }, observerOptions);
+
+      document.querySelectorAll(".feature-card").forEach((card) => {
+        card.style.opacity = "0";
+        card.style.transform = "translateY(50px)";
+        card.style.transition = "all 0.6s ease-out";
+        observer.observe(card);
+      });
+    </script>
   </body>
 </html>

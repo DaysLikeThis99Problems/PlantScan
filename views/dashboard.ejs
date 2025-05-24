@@ -9,229 +9,1479 @@
       rel="stylesheet"
     />
     <style>
+      :root {
+        --primary-color: #2ecc71;
+        --secondary-color: #3498db;
+        --accent-color: #e74c3c;
+        --background-color: #f8f9fa;
+        --text-color: #2c3e50;
+        --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        --transition-speed: 0.3s;
+        --bounce-timing: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      }
+
       body {
         font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
         line-height: 1.6;
-        color: #333;
-        max-width: 800px;
-        margin: 0 auto;
+        color: var(--text-color);
+        margin: 0;
         padding: 20px;
-        background-color: #f8f9fa;
+        background-color: var(--background-color);
+        transition: background-color var(--transition-speed);
       }
+
+      .page-wrapper {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
       .container {
         background-color: #ffffff;
-        border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border-radius: 12px;
+        box-shadow: var(--card-shadow);
         padding: 30px;
+        margin-bottom: 30px;
+        transition: transform var(--transition-speed);
       }
+
+      .container:hover {
+        transform: translateY(-5px);
+      }
+
+      .header-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+
+      .nav-links {
+        display: flex;
+        gap: 20px;
+      }
+
+      .nav-link {
+        text-decoration: none;
+        color: var(--text-color);
+        font-weight: bold;
+        padding: 10px 20px;
+        border-radius: 8px;
+        transition: all var(--transition-speed);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .nav-link:hover {
+        background-color: var(--primary-color);
+        color: white;
+      }
+
+      .nav-link::before {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 0;
+        height: 2px;
+        background-color: var(--primary-color);
+        transition: width var(--transition-speed) var(--bounce-timing);
+      }
+
+      .nav-link:hover::before {
+        width: 100%;
+      }
+
+      .user-info {
+        background-color: var(--primary-color);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 8px;
+        display: inline-block;
+        cursor: pointer;
+        transition: all var(--transition-speed);
+      }
+
+      .user-info:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      }
+
       h1,
       h2 {
-        color: #2c3e50;
-        margin-bottom: 10px;
+        color: var(--text-color);
+        margin-bottom: 20px;
       }
-      .description {
-        color: #7f8c8d;
+
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
         margin-bottom: 30px;
       }
+
+      .card {
+        background-color: #ffffff;
+        border-radius: 12px;
+        padding: 25px;
+        text-align: center;
+        box-shadow: var(--card-shadow);
+        transition: all var(--transition-speed);
+        animation: slideFromTop 0.6s var(--bounce-timing) backwards;
+      }
+
+      .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        animation: floatAnimation 3s ease-in-out infinite;
+      }
+
+      .card:nth-child(1) {
+        animation-delay: 0.1s;
+      }
+      .card:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      .card:nth-child(3) {
+        animation-delay: 0.3s;
+      }
+
+      .card-icon {
+        transition: transform var(--transition-speed) var(--bounce-timing);
+      }
+
+      .card:hover .card-icon {
+        transform: scale(1.2) rotate(10deg);
+      }
+
       .upload-area {
-        border: 2px dashed #3498db;
-        border-radius: 8px;
-        padding: 20px;
+        border: 2px dashed var(--secondary-color);
+        border-radius: 12px;
+        padding: 60px;
         text-align: center;
         cursor: pointer;
-        transition: background-color 0.3s;
+        transition: all var(--transition-speed);
+        position: relative;
+        overflow: hidden;
+        animation: pulseScale 2s infinite;
+        min-height: 300px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background-color: rgba(255, 255, 255, 0.8);
       }
+
       .upload-area:hover {
         background-color: #e8f4fd;
+        border-color: var(--primary-color);
+        transform: scale(1.02);
       }
+
+      .upload-area.drag-over {
+        background-color: #e8f4fd;
+        border-color: var(--primary-color);
+        transform: scale(1.02);
+        animation: none;
+      }
+
       .upload-icon {
         font-size: 48px;
-        color: #3498db;
-        margin-bottom: 10px;
+        color: var(--secondary-color);
+        margin-bottom: 20px;
+        transition: all var(--transition-speed);
       }
+
+      .upload-area:hover .upload-icon {
+        color: var(--primary-color);
+        transform: scale(1.1);
+      }
+
       .upload-text {
-        color: #3498db;
-        font-weight: bold;
+        font-size: 1.2em;
+        color: var(--text-color);
+        margin: 15px 0;
       }
+
       #imageInput {
         display: none;
       }
+
       #imagePreview {
         max-width: 100%;
         max-height: 300px;
+        display: none;
         margin-top: 20px;
         border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .analyze-button {
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 12px 24px;
+        font-size: 1.1em;
+        cursor: pointer;
+        transition: all var(--transition-speed);
+        margin-top: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        opacity: 0.7;
+        pointer-events: none;
+      }
+
+      .analyze-button.active {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0);
+      }
+
+      .analyze-button.active:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(46, 204, 113, 0.2);
+      }
+
+      .analyze-button i {
+        font-size: 1.2em;
+      }
+
+      .gallery-controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .search-box {
+        flex: 1;
+        max-width: 300px;
+        position: relative;
+      }
+
+      .search-box input {
+        width: 100%;
+        padding: 10px 40px 10px 15px;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        font-size: 16px;
+        transition: all var(--transition-speed);
+      }
+
+      .search-box input:focus {
+        border-color: var(--primary-color);
+        outline: none;
+        transform: scale(1.02);
+        box-shadow: 0 0 15px rgba(46, 204, 113, 0.2);
+      }
+
+      .search-box i {
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #999;
+      }
+
+      .sort-options {
+        display: flex;
+        gap: 10px;
+      }
+
+      .sort-button {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 8px;
+        background-color: #f0f0f0;
+        cursor: pointer;
+        transition: all var(--transition-speed);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .sort-button:hover,
+      .sort-button.active {
+        background-color: var(--primary-color);
+        color: white;
+      }
+
+      .sort-button::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.2),
+          transparent
+        );
+        transition: left 0.5s;
+      }
+
+      .sort-button:hover::after {
+        left: 100%;
+      }
+
+      .gallery-section {
+        margin-top: 30px;
+      }
+
+      .gallery-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+
+      .gallery-title {
+        font-size: 24px;
+        color: var(--text-color);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .gallery-filters {
+        display: flex;
+        gap: 15px;
+        align-items: center;
+      }
+
+      .filter-button {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 20px;
+        background: #f0f0f0;
+        color: var(--text-color);
+        cursor: pointer;
+        transition: all var(--transition-speed);
+      }
+
+      .filter-button.active {
+        background: var(--primary-color);
+        color: white;
+      }
+
+      .gallery-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 25px;
+        margin-top: 20px;
+      }
+
+      .gallery-item {
+        position: relative;
+        border-radius: 12px;
+        overflow: hidden;
+        background: white;
+        box-shadow: var(--card-shadow);
+        transition: all var(--transition-speed);
+      }
+
+      .gallery-item:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+      }
+
+      .gallery-image {
+        width: 100%;
+        height: 300px;
+        object-fit: cover;
+      }
+
+      .gallery-item-content {
+        padding: 15px;
+      }
+
+      .image-date {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 10px;
+      }
+
+      .plant-type {
+        font-weight: bold;
+        color: var(--primary-color);
+        margin-bottom: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .plant-type-text {
+        margin-right: 8px;
+      }
+
+      .edit-name-btn {
+        background: none;
+        border: none;
+        color: var(--text-color);
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 50%;
+        transition: all var(--transition-speed);
+      }
+
+      .edit-name-btn:hover {
+        background: rgba(0, 0, 0, 0.1);
+        color: var(--primary-color);
+      }
+
+      .plant-name-input {
+        width: 100%;
+        padding: 8px;
+        border: 2px solid var(--primary-color);
+        border-radius: 4px;
+        font-size: 14px;
+        margin-bottom: 8px;
         display: none;
       }
-      button {
+
+      .plant-name-input.active {
         display: block;
-        width: 100%;
-        padding: 12px;
-        background-color: #2ecc71;
-        color: #fff;
+        animation: fadeIn 0.3s ease-out;
+      }
+
+      .name-edit-actions {
+        display: none;
+        gap: 8px;
+        margin-top: 8px;
+      }
+
+      .name-edit-actions.active {
+        display: flex;
+        animation: fadeIn 0.3s ease-out;
+      }
+
+      .name-edit-btn {
+        padding: 4px 8px;
         border: none;
         border-radius: 4px;
         cursor: pointer;
-        font-size: 16px;
-        font-weight: bold;
-        transition: background-color 0.3s;
-        margin-top: 20px;
+        transition: all var(--transition-speed);
+        font-size: 12px;
       }
-      button:hover {
-        background-color: #27ae60;
+
+      .save-name-btn {
+        background: var(--primary-color);
+        color: white;
       }
-      #loading,
-      #result {
-        text-align: center;
-        margin-top: 20px;
-        font-weight: bold;
+
+      .cancel-name-btn {
+        background: #e74c3c;
+        color: white;
       }
-      #loading {
-        color: #3498db;
-      }
-      #result {
-        background-color: #f1f8e9;
-        padding: 20px;
-        border-radius: 8px;
-        border: 1px solid #c5e1a5;
-      }
-      #downloadButton {
-        background-color: #e74c3c;
-      }
-      #downloadButton:hover {
-        background-color: #c0392b;
-      }
-      .cards {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 30px;
-      }
-      .card {
-        background-color: #f1f8e9;
-        border-radius: 8px;
-        padding: 20px;
-        width: 30%;
-        text-align: center;
+
+      .name-edit-btn:hover {
+        transform: translateY(-2px);
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       }
-      .card-icon {
-        font-size: 36px;
-        color: #2ecc71;
-        margin-bottom: 10px;
+
+      .image-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
       }
-      .features {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 20px;
-        margin-top: 30px;
-      }
-      .feature {
-        background-color: #e8f4fd;
-        border-radius: 8px;
-        padding: 15px;
+
+      .action-button {
+        padding: 8px;
+        border: none;
+        border-radius: 50%;
+        background: #f0f0f0;
+        color: var(--text-color);
+        cursor: pointer;
+        transition: all var(--transition-speed);
         display: flex;
         align-items: center;
+        justify-content: center;
       }
-      .feature-icon {
+
+      .action-button:hover {
+        background: var(--primary-color);
+        color: white;
+        transform: scale(1.1);
+      }
+
+      .empty-gallery {
+        text-align: center;
+        padding: 40px;
+        background: #f9f9f9;
+        border-radius: 12px;
+        color: #666;
+      }
+
+      .empty-gallery i {
+        font-size: 48px;
+        color: #ddd;
+        margin-bottom: 20px;
+      }
+
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.8);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+        opacity: 0;
+        transition: opacity var(--transition-speed);
+      }
+
+      .modal.show {
+        opacity: 1;
+      }
+
+      .modal-content {
+        max-width: 90%;
+        max-height: 90vh;
+        position: relative;
+        transform: scale(0.7);
+        transition: transform var(--transition-speed) var(--bounce-timing);
+      }
+
+      .modal.show .modal-content {
+        transform: scale(1);
+      }
+
+      .modal-content img {
+        max-width: 100%;
+        max-height: 90vh;
+        object-fit: contain;
+        border-radius: 8px;
+      }
+
+      .close-modal {
+        position: absolute;
+        top: -40px;
+        right: 0;
+        color: white;
         font-size: 24px;
-        color: #3498db;
-        margin-right: 15px;
+        cursor: pointer;
       }
-      .a{
-        font-size: x-large;
+
+      @media (max-width: 768px) {
+        .cards {
+          grid-template-columns: 1fr;
+        }
+
+        .gallery-controls {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .search-box {
+          max-width: 100%;
+        }
+
+        .gallery-grid {
+          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        }
       }
-      .a:hover{
-        color: #e74c3c;
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
       }
-      .user{
-        font-size: medium;
-        margin-left: 600px;
+
+      .fade-in {
+        animation: fadeIn 0.5s ease-in;
+      }
+
+      @keyframes slideIn {
+        from {
+          transform: translateY(20px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+
+      .slide-in {
+        animation: slideIn 0.5s ease-out;
+      }
+
+      @keyframes pulseScale {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.05);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      @keyframes slideFromLeft {
+        from {
+          transform: translateX(-100px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+
+      @keyframes slideFromRight {
+        from {
+          transform: translateX(100px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+
+      @keyframes slideFromTop {
+        from {
+          transform: translateY(-50px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+
+      @keyframes floatAnimation {
+        0% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-10px);
+        }
+        100% {
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes fadeInRotate {
+        from {
+          opacity: 0;
+          transform: rotateY(-10deg) translateZ(-100px);
+        }
+        to {
+          opacity: 1;
+          transform: rotateY(0) translateZ(0);
+        }
+      }
+
+      @keyframes shimmer {
+        0% {
+          background-position: -1000px 0;
+        }
+        100% {
+          background-position: 1000px 0;
+        }
+      }
+
+      .loading-shimmer {
+        background: linear-gradient(
+          90deg,
+          #f0f0f0 25%,
+          #e0e0e0 50%,
+          #f0f0f0 75%
+        );
+        background-size: 1000px 100%;
+        animation: shimmer 2s infinite linear;
+      }
+
+      #loading {
+        animation: pulseScale 1s infinite;
+      }
+
+      /* Profile Styles */
+      .profile-section {
+        margin-bottom: 30px;
+      }
+
+      .profile-header {
+        background: linear-gradient(
+          135deg,
+          var(--primary-color),
+          var(--secondary-color)
+        );
+        color: white;
+        padding: 40px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .profile-header::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(
+          45deg,
+          transparent 0%,
+          rgba(255, 255, 255, 0.1) 100%
+        );
+        z-index: 1;
+      }
+
+      .profile-content {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        gap: 30px;
+      }
+
+      .profile-avatar {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        border: 4px solid white;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .profile-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .profile-info {
+        flex: 1;
+      }
+
+      .profile-name {
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 10px;
+      }
+
+      .profile-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+      }
+
+      .stat-card {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+        backdrop-filter: blur(5px);
+        transition: transform var(--transition-speed);
+      }
+
+      .stat-card:hover {
+        transform: translateY(-5px);
+      }
+
+      .stat-value {
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 5px;
+      }
+
+      .stat-label {
+        font-size: 14px;
+        opacity: 0.9;
+      }
+
+      .profile-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1.5rem;
+      }
+
+      .profile-action-btn {
+        padding: 0.8rem 1.5rem;
+        border: none;
+        border-radius: 50px;
+        cursor: pointer;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all var(--transition-speed);
+        background: var(--light-color);
+        color: var(--dark-color);
+      }
+
+      .profile-action-btn.primary {
+        background: var(--primary-color);
+        color: white;
+      }
+
+      .profile-action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      .profile-action-btn i {
+        font-size: 1.1rem;
+      }
+
+      .profile-action-btn::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          120deg,
+          transparent,
+          rgba(255, 255, 255, 0.2),
+          transparent
+        );
+        transform: translateX(-100%);
+        transition: transform 0.6s;
+      }
+
+      .profile-action-btn:hover::before {
+        transform: translateX(100%);
+      }
+
+      @media (max-width: 768px) {
+        .profile-actions {
+          flex-direction: column;
+        }
+
+        .profile-action-btn {
+          width: 100%;
+          justify-content: center;
+        }
+      }
+
+      /* Add these styles for the toast notifications */
+      .toast {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        padding: 12px 24px;
+        border-radius: 4px;
+        color: white;
+        font-size: 14px;
+        z-index: 1000;
+        animation: slideIn 0.3s ease-out;
+      }
+
+      .toast.success {
+        background-color: var(--primary-color);
+      }
+
+      .toast.error {
+        background-color: #e74c3c;
+      }
+
+      @keyframes slideIn {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+
+      /* Add these styles in your style section */
+      .profile-edit-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+        backdrop-filter: blur(5px);
+      }
+
+      .profile-edit-modal.active {
+        display: flex;
+        animation: fadeIn 0.3s ease-out;
+      }
+
+      .profile-edit-content {
+        background: white;
+        padding: 2rem;
+        border-radius: 15px;
+        width: 90%;
+        max-width: 500px;
+        position: relative;
+        transform: translateY(-50px);
+        opacity: 0;
+        transition: all 0.3s ease-out;
+      }
+
+      .profile-edit-modal.active .profile-edit-content {
+        transform: translateY(0);
+        opacity: 1;
+      }
+
+      .profile-edit-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #eee;
+      }
+
+      .profile-edit-header h2 {
+        margin: 0;
+        color: var(--dark-color);
+      }
+
+      .close-profile-edit {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: var(--text-color);
+        transition: all 0.3s;
+      }
+
+      .close-profile-edit:hover {
+        color: var(--primary-color);
+        transform: rotate(90deg);
+      }
+
+      .profile-edit-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .form-group label {
+        font-weight: bold;
+        color: var(--text-color);
+      }
+
+      .form-group input {
+        padding: 0.8rem;
+        border: 2px solid #eee;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.3s;
+      }
+
+      .form-group input:focus {
+        border-color: var(--primary-color);
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(46, 204, 113, 0.1);
+      }
+
+      .password-toggle {
+        position: relative;
+      }
+
+      .password-toggle i {
+        position: absolute;
+        right: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        cursor: pointer;
+        color: #666;
+      }
+
+      .profile-edit-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1.5rem;
+      }
+
+      .profile-edit-btn {
+        padding: 0.8rem 1.5rem;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: all 0.3s;
+        flex: 1;
+      }
+
+      .save-profile-btn {
+        background: var(--primary-color);
+        color: white;
+      }
+
+      .cancel-profile-btn {
+        background: #eee;
+        color: var(--text-color);
+      }
+
+      .profile-edit-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Add ripple effect styles */
+      .ripple {
+        position: absolute;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+        transform: scale(0);
+        animation: ripple 0.6s linear;
+        pointer-events: none;
+      }
+
+      @keyframes ripple {
+        to {
+          transform: scale(4);
+          opacity: 0;
+        }
+      }
+
+      /* Update the profile edit modal styles */
+      .profile-picture-upload {
+        text-align: center;
+        margin-bottom: 1.5rem;
+      }
+
+      .profile-picture-preview {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        margin: 0 auto 1rem;
+        border: 3px solid var(--primary-color);
+        overflow: hidden;
+        position: relative;
+        cursor: pointer;
+        transition: all var(--transition-speed);
+      }
+
+      .profile-picture-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .profile-picture-preview:hover {
+        transform: scale(1.05);
+      }
+
+      .profile-picture-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 8px;
+        text-align: center;
+        opacity: 0;
+        transition: opacity var(--transition-speed);
+      }
+
+      .profile-picture-preview:hover .profile-picture-overlay {
+        opacity: 1;
+      }
+
+      .profile-picture-overlay i {
+        margin-right: 5px;
+      }
+
+      .profile-picture-input {
+        display: none;
+      }
+
+      .emoji-avatar {
+        background-color: #f0f0f0;
+        border-radius: 50%;
+        width: 120px;
+        height: 120px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 48px;
+        border: 4px solid white;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .profile-username {
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 0.9em;
+        margin-top: 5px;
+      }
+
+      .download-button {
+        background-color: var(--secondary-color);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 12px 24px;
+        font-size: 1.1em;
+        cursor: pointer;
+        transition: all var(--transition-speed);
+        margin-top: 20px;
+        display: none;
+        align-items: center;
+        gap: 10px;
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      .download-button.active {
+        display: flex;
+        opacity: 1;
+        transform: translateY(0);
+        animation: slideUp 0.3s ease-out;
+      }
+
+      .download-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2);
+      }
+
+      .download-button i {
+        font-size: 1.2em;
+      }
+
+      @keyframes slideUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      #result {
+        margin-top: 30px;
+        padding: 20px;
+        border-radius: 8px;
+        background-color: white;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        display: none;
+        animation: fadeIn 0.3s ease-out;
+      }
+
+      #result.active {
+        display: block;
+      }
+
+      #result h3 {
+        color: var(--primary-color);
+        margin-bottom: 15px;
+      }
+
+      #result p {
+        line-height: 1.6;
+        color: var(--text-color);
       }
     </style>
   </head>
   <body>
-     <div class="a">
-      <a id="a1" href="/logout" class="btn btn-primary cta-button">Logout</a>
-      <a id="a2" href="/" class="btn btn-primary cta-button">Home</a>
-    </div>
-    <div id="User">
-      <p class="username"></p>
-    </div>
-    <div class="container">
-      <h1>
-        <i class="fas fa-leaf"></i> PlantScan: Advanced Plant Analysis Tool
-      </h1>
-      <p class="description">
-        Upload an image of a plant to receive a detailed analysis of its
-        species, health, and care recommendations.
-      </p>
-
-      <h2>How to Use</h2>
-      <div class="cards">
-        <div class="card">
-          <i class="fas fa-upload card-icon"></i>
-          <h3>Upload</h3>
-          <p>Select or drag & drop a plant image</p>
+    <div class="page-wrapper">
+      <div class="header-section">
+        <div class="nav-links">
+          <a href="/" class="nav-link">Home</a>
+          <a href="/logout" class="nav-link">Logout</a>
         </div>
-        <div class="card">
-          <i class="fas fa-search card-icon"></i>
-          <h3>Analyze</h3>
-          <p>Click 'Analyze Plant' to process the image</p>
-        </div>
-        <div class="card">
-          <i class="fas fa-file-pdf card-icon"></i>
-          <h3>Download</h3>
-          <p>Get your detailed PDF report</p>
+        <div id="User" class="user-info">
+          <div style="display: flex; align-items: center; gap: 10px">
+            <% if (profilePicture && profilePicture.startsWith('http')) { %>
+            <img
+              src="<%= profilePicture %>"
+              alt="Profile"
+              style="width: 30px; height: 30px; border-radius: 50%"
+            />
+            <% } else { %>
+            <span style="font-size: 24px"><%= profilePicture %></span>
+            <% } %>
+            <span><%= displayName %></span>
+          </div>
         </div>
       </div>
 
-      <form id="uploadForm" enctype="multipart/form-data">
-        <div class="upload-area" id="dropArea">
-          <i class="fas fa-cloud-upload-alt upload-icon"></i>
-          <p class="upload-text">Drag & Drop or Click to Upload Plant Image</p>
-          <input
-            type="file"
-            name="image"
-            accept="image/*"
-            required
-            id="imageInput"
-          />
-          <img id="imagePreview" alt="Image preview" />
+      <!-- Profile Section -->
+      <div class="profile-section container">
+        <div class="profile-header">
+          <div class="profile-content">
+            <div class="profile-avatar">
+              <% if (profilePicture && profilePicture.startsWith('http')) { %>
+              <img
+                src="<%= profilePicture %>"
+                alt="Profile Picture"
+                id="profileAvatar"
+              />
+              <% } else { %>
+              <div
+                class="emoji-avatar"
+                id="profileAvatar"
+                style="
+                  font-size: 48px;
+                  display: flex;
+                  justify-content: center;
+                  align-items: center;
+                  width: 100%;
+                  height: 100%;
+                "
+              >
+                <%= profilePicture %>
+              </div>
+              <% } %>
+            </div>
+            <div class="profile-info">
+              <div class="profile-name">
+                Welcome,
+                <span id="profileName"><%= displayName || username %></span>
+              </div>
+              <div class="profile-username" id="profileUsername">
+                @<%= username %>
+              </div>
+              <div class="profile-stats">
+                <div class="stat-card">
+                  <div class="stat-value" id="totalScans">0</div>
+                  <div class="stat-label">Total Scans</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value" id="lastScan">-</div>
+                  <div class="stat-label">Last Scan</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value" id="plantTypes">0</div>
+                  <div class="stat-label">Plant Types</div>
+                </div>
+              </div>
+              <div class="profile-actions">
+                <button class="profile-action-btn primary" id="editProfileBtn">
+                  <i class="fas fa-user-edit"></i>
+                  Edit Profile
+                </button>
+                <button class="profile-action-btn" id="downloadHistoryBtn">
+                  <i class="fas fa-download"></i>
+                  Download History
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-        <button type="submit">
-          <i class="fas fa-search"></i> Analyze Plant
+      </div>
+
+      <div class="container slide-in">
+        <h1>
+          <i class="fas fa-leaf"></i> PlantScan: Advanced Plant Analysis Tool
+        </h1>
+        <p class="description">
+          Upload an image of a plant to receive a detailed analysis of its
+          species, health, and care recommendations.
+        </p>
+
+        <div class="cards">
+          <div class="card fade-in">
+            <i class="fas fa-upload card-icon"></i>
+            <h3>Upload</h3>
+            <p>Select or drag & drop a plant image</p>
+          </div>
+          <div class="card fade-in">
+            <i class="fas fa-search card-icon"></i>
+            <h3>Analyze</h3>
+            <p>Click 'Analyze Plant' to process the image</p>
+          </div>
+          <div class="card fade-in">
+            <i class="fas fa-file-pdf card-icon"></i>
+            <h3>Download</h3>
+            <p>Get your detailed PDF report</p>
+          </div>
+        </div>
+
+        <form id="uploadForm" enctype="multipart/form-data">
+          <div class="upload-area" id="dropArea">
+            <i class="fas fa-cloud-upload-alt upload-icon"></i>
+            <p class="upload-text">
+              Drag & Drop or Click to Upload Plant Image
+            </p>
+            <input
+              type="file"
+              name="image"
+              accept="image/*"
+              required
+              id="imageInput"
+            />
+            <img id="imagePreview" alt="Image preview" />
+          </div>
+          <button
+            type="submit"
+            class="analyze-button"
+            id="analyzeButton"
+            disabled
+          >
+            <i class="fas fa-search"></i> Analyze Plant
+          </button>
+        </form>
+
+        <div id="loading" style="display: none">
+          <i class="fas fa-spinner fa-spin"></i> Analyzing plant image...
+        </div>
+        <div id="result"></div>
+        <button id="downloadButton" class="download-button">
+          <i class="fas fa-file-pdf"></i> Download PDF Report
         </button>
-      </form>
-
-      <div id="loading" style="display: none">
-        <i class="fas fa-spinner fa-spin"></i> Analyzing plant image...
       </div>
-      <div id="result"></div>
-      <button id="downloadButton" style="display: none">
-        <i class="fas fa-file-pdf"></i> Download PDF Report
-      </button>
 
-      <h2>Features</h2>
-      <div class="features">
-        <div class="feature">
-          <i class="fas fa-seedling feature-icon"></i>
-          <span>Accurate plant species identification</span>
+      <!-- Gallery Section -->
+      <div class="container gallery-section">
+        <div class="gallery-header">
+          <h2 class="gallery-title">
+            <i class="fas fa-leaf"></i> My Plant Collection
+          </h2>
+          <div class="gallery-filters">
+            <input
+              type="text"
+              id="searchInput"
+              placeholder="Search plants..."
+              class="search-input"
+            />
+            <button class="filter-button active" data-sort="newest">
+              Newest
+            </button>
+            <button class="filter-button" data-sort="oldest">Oldest</button>
+          </div>
         </div>
-        <div class="feature">
-          <i class="fas fa-heartbeat feature-icon"></i>
-          <span>Detailed plant health assessment</span>
-        </div>
-        <div class="feature">
-          <i class="fas fa-list-ul feature-icon"></i>
-          <span>Customized care recommendations</span>
-        </div>
-        <div class="feature">
-          <i class="fas fa-history feature-icon"></i>
-          <span>Fast processing and instant results</span>
+        <div id="imageGallery" class="gallery-grid">
+          <!-- Images will be loaded here -->
         </div>
       </div>
     </div>
-    
+
+    <!-- Image Modal -->
+    <div id="imageModal" class="modal">
+      <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <img id="modalImage" src="" alt="Enlarged plant image" />
+        <div class="modal-info">
+          <h3 id="modalPlantType"></h3>
+          <p id="modalAnalysis"></p>
+          <p id="modalDate"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profile Edit Modal -->
+    <div class="profile-edit-modal" id="profileEditModal">
+      <div class="profile-edit-content">
+        <div class="profile-edit-header">
+          <h2>Edit Profile</h2>
+          <button
+            type="button"
+            class="close-profile-edit"
+            id="closeProfileEdit"
+          >
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <form
+          class="profile-edit-form"
+          id="profileEditForm"
+          enctype="multipart/form-data"
+        >
+          <div class="profile-picture-upload">
+            <div
+              class="profile-picture-preview"
+              id="profilePicturePreview"
+              onclick="document.getElementById('profilePictureInput').click();"
+            >
+              <% if (profilePicture && profilePicture.startsWith('http')) { %>
+              <img
+                src="<%= profilePicture %>"
+                alt="Profile Picture"
+                id="previewImage"
+              />
+              <% } else if (profilePicture && profilePicture.startsWith('/')) {
+              %>
+              <img
+                src="<%= profilePicture %>"
+                alt="Profile Picture"
+                id="previewImage"
+                onerror="this.src='/images/default-avatar.jpg'"
+              />
+              <% } else { %>
+              <div
+                class="emoji-avatar"
+                id="previewImage"
+                style="width: 100%; height: 100%; font-size: 48px"
+              >
+                <%= profilePicture %>
+              </div>
+              <% } %>
+              <div class="profile-picture-overlay">
+                <i class="fas fa-camera"></i>
+                <span>Change Picture</span>
+              </div>
+            </div>
+            <input
+              type="file"
+              id="profilePictureInput"
+              name="profilePicture"
+              class="profile-picture-input"
+              accept="image/*"
+            />
+          </div>
+          <div class="form-group">
+            <label for="displayName">Display Name</label>
+            <input
+              type="text"
+              id="displayName"
+              name="displayName"
+              placeholder="Enter your display name"
+              minlength="2"
+              required
+            />
+          </div>
+          <div class="profile-edit-actions">
+            <button
+              type="submit"
+              class="profile-edit-btn save-profile-btn"
+              id="saveProfileBtn"
+            >
+              <i class="fas fa-save"></i> Save Changes
+            </button>
+            <button
+              type="button"
+              class="profile-edit-btn cancel-profile-btn"
+              id="cancelProfileEdit"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <script>
       const imageInput = document.getElementById("imageInput");
@@ -244,30 +1494,59 @@
       let analysisResult = "";
       let analysisImage = "";
 
-        document.addEventListener("DOMContentLoaded", async () => {
-          const usernameElement = document.getElementById("User");
-            const response = await fetch("/username", {
-              method: "GET",
-            });
-            resultDiv.textContent = "";
-              const data = await response.json();
-              usernameElement.innerHTML = "<p>Username:"+data.username+"</p>"; 
-            });
+      document.addEventListener("DOMContentLoaded", async () => {
+        const usernameElement = document.getElementById("User");
+        const profileUsername = document.getElementById("profileUsername");
+        const profileAvatar = document.getElementById("profileAvatar");
+        const totalScans = document.getElementById("totalScans");
+        const lastScan = document.getElementById("lastScan");
+        const plantTypes = document.getElementById("plantTypes");
+
+        try {
+          // Fetch user data
+          const response = await fetch("/username", {
+            method: "GET",
+          });
+          const data = await response.json();
+
+          // Update username displays
+          usernameElement.innerHTML = `<p>Username: ${data.username}</p>`;
+          profileUsername.textContent = data.username;
+
+          // Fetch user statistics
+          const statsResponse = await fetch("/user-stats");
+          const statsData = await statsResponse.json();
+
+          // Update statistics
+          totalScans.textContent = statsData.totalScans || 0;
+          lastScan.textContent = statsData.lastScan
+            ? new Date(statsData.lastScan).toLocaleDateString()
+            : "-";
+          plantTypes.textContent = statsData.uniquePlantTypes || 0;
+        } catch (error) {
+          console.error("Error loading user data:", error);
+        }
+      });
 
       dropArea.addEventListener("click", () => imageInput.click());
 
+      dropArea.addEventListener("dragenter", (e) => {
+        e.preventDefault();
+        dropArea.classList.add("drag-over");
+      });
+
       dropArea.addEventListener("dragover", (e) => {
         e.preventDefault();
-        dropArea.style.backgroundColor = "#e8f4fd";
+        dropArea.classList.add("drag-over");
       });
 
       dropArea.addEventListener("dragleave", () => {
-        dropArea.style.backgroundColor = "";
+        dropArea.classList.remove("drag-over");
       });
 
       dropArea.addEventListener("drop", (e) => {
         e.preventDefault();
-        dropArea.style.backgroundColor = "";
+        dropArea.classList.remove("drag-over");
         const file = e.dataTransfer.files[0];
         if (file && file.type.startsWith("image/")) {
           imageInput.files = e.dataTransfer.files;
@@ -284,27 +1563,78 @@
 
       function handleImageUpload(file) {
         const reader = new FileReader();
+        const analyzeButton = document.getElementById("analyzeButton");
+
         reader.onload = function (e) {
+          const imagePreview = document.getElementById("imagePreview");
           imagePreview.src = e.target.result;
           imagePreview.style.display = "block";
+
+          // Activate analyze button
+          analyzeButton.classList.add("active");
+          analyzeButton.disabled = false;
+
+          // Update upload area text
+          const uploadText = document.querySelector(".upload-text");
+          uploadText.innerHTML =
+            '<i class="fas fa-check-circle" style="color: var(--primary-color)"></i> Image Ready for Analysis';
         };
+
         reader.readAsDataURL(file);
       }
 
+      // Reset form handler
+      function resetUploadArea() {
+        const imagePreview = document.getElementById("imagePreview");
+        const analyzeButton = document.getElementById("analyzeButton");
+        const uploadText = document.querySelector(".upload-text");
+
+        imagePreview.style.display = "none";
+        imagePreview.src = "";
+        analyzeButton.classList.remove("active");
+        analyzeButton.disabled = true;
+        uploadText.innerHTML = "Drag & Drop or Click to Upload Plant Image";
+      }
+
+      // Update the form submit handler
       uploadForm.addEventListener("submit", async (e) => {
         e.preventDefault();
+        const analyzeButton = document.getElementById("analyzeButton");
         const formData = new FormData(e.target);
-        loadingDiv.style.display = "block";
-        resultDiv.style.display = "none";
-        resultDiv.textContent = "";
-        downloadButton.style.display = "none";
+        const resultDiv = document.getElementById("result");
+        const downloadButton = document.getElementById("downloadButton");
 
         try {
-          const response = await fetch("/analyze", {
+          // Disable button and show loading state
+          analyzeButton.disabled = true;
+          analyzeButton.innerHTML =
+            '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+
+          // Reset result and download button
+          resultDiv.classList.remove("active");
+          downloadButton.classList.remove("active");
+
+          // Upload image
+          const uploadResponse = await fetch("/upload1", {
             method: "POST",
             body: formData,
           });
-          const data = await response.json();
+
+          if (!uploadResponse.ok) {
+            throw new Error("Failed to upload image");
+          }
+
+          // Continue with plant analysis
+          loadingDiv.style.display = "block";
+          resultDiv.style.display = "none";
+          resultDiv.textContent = "";
+
+          const analyzeResponse = await fetch("/analyze", {
+            method: "POST",
+            body: formData,
+          });
+
+          const data = await analyzeResponse.json();
           if (data.result) {
             analysisResult = data.result;
             analysisImage = data.image;
@@ -312,59 +1642,600 @@
               "<h3>Analysis Result:</h3><p>" +
               analysisResult.replace(/\n/g, "<br>") +
               "</p>";
+
+            // Show result with animation
             resultDiv.style.display = "block";
-            downloadButton.style.display = "block";
+            setTimeout(() => {
+              resultDiv.classList.add("active");
+              // Show download button with animation after a short delay
+              setTimeout(() => {
+                downloadButton.classList.add("active");
+              }, 300);
+            }, 100);
+
+            // Load images only once after both upload and analysis are complete
+            await loadUserImages();
           } else if (data.error) {
             resultDiv.textContent = "Error: " + data.error;
-            resultDiv.style.display = "block";
+            resultDiv.classList.add("active");
           }
         } catch (error) {
+          console.error("Error:", error);
           resultDiv.textContent = "Error: " + error.message;
-          resultDiv.style.display = "block";
+          resultDiv.classList.add("active");
         } finally {
+          // Reset button state
+          analyzeButton.innerHTML =
+            '<i class="fas fa-search"></i> Analyze Plant';
+          analyzeButton.disabled = false;
           loadingDiv.style.display = "none";
+
+          // Reset the upload area
+          resetUploadArea();
         }
       });
 
-uploadForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        fetch("/upload1", {
-          method: "POST",
-          body: formData,
-        })
-          .then(response => {
-            console.log("Response Status:", response.status);
-            return response.text(); // Change to `.text()` for debugging
-          })
-          .then(data => console.log("Server Response:", data))
-          .catch(error => console.error("Upload Failed:", error));
-        });
-
-
+      // Update download button handler
       downloadButton.addEventListener("click", async () => {
-        const response = await fetch("/download", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            result: analysisResult,
-            image: analysisImage,
-          }),
-        });
-        if (response.ok) {
-          const blob = await response.blob();
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = "Plant_Analysis_Report.pdf";
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-        } else {
-          alert("Failed to generate and download the PDF report.");
+        const downloadBtn = document.getElementById("downloadButton");
+        const originalText = downloadBtn.innerHTML;
+
+        try {
+          // Show loading state
+          downloadBtn.disabled = true;
+          downloadBtn.innerHTML =
+            '<i class="fas fa-spinner fa-spin"></i> Generating PDF...';
+
+          const response = await fetch("/download", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              result: analysisResult,
+              image: analysisImage,
+            }),
+          });
+
+          if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "Plant_Analysis_Report.pdf";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+
+            // Show success state briefly
+            downloadBtn.innerHTML = '<i class="fas fa-check"></i> Downloaded!';
+            setTimeout(() => {
+              downloadBtn.innerHTML = originalText;
+              downloadBtn.disabled = false;
+            }, 2000);
+          } else {
+            throw new Error("Failed to generate PDF");
+          }
+        } catch (error) {
+          console.error("Error:", error);
+          downloadBtn.innerHTML =
+            '<i class="fas fa-exclamation-triangle"></i> Download Failed';
+          setTimeout(() => {
+            downloadBtn.innerHTML = originalText;
+            downloadBtn.disabled = false;
+          }, 2000);
         }
+      });
+
+      // Enhanced loadUserImages function
+      async function loadUserImages() {
+        try {
+          const response = await fetch("/my-images");
+          const data = await response.json();
+
+          const gallery = document.getElementById("imageGallery");
+          gallery.innerHTML = "";
+
+          if (data.images && data.images.length > 0) {
+            const sortOrder = document.querySelector(".filter-button.active")
+              .dataset.sort;
+            const images = [...data.images];
+
+            images.sort((a, b) => {
+              const dateA = new Date(a.createdAt);
+              const dateB = new Date(b.createdAt);
+              return sortOrder === "newest" ? dateB - dateA : dateA - dateB;
+            });
+
+            images.forEach((image) => {
+              const date = new Date(image.createdAt).toLocaleDateString();
+              const imageDiv = document.createElement("div");
+              imageDiv.className = "gallery-item fade-in";
+              imageDiv.innerHTML = `
+                <img src="${
+                  image.url
+                }" alt="Plant Image" class="gallery-image" loading="lazy">
+                <div class="gallery-item-content">
+                  <div class="plant-type">
+                    <span class="plant-type-text">${
+                      image.plantType || "Unknown Plant"
+                    }</span>
+                    <button class="edit-name-btn" title="Edit plant name">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                  </div>
+                  <input type="text" class="plant-name-input" 
+                         value="${image.plantType || ""}" 
+                         placeholder="Enter plant name">
+                  <div class="name-edit-actions">
+                    <button class="name-edit-btn save-name-btn">
+                      <i class="fas fa-check"></i> Save
+                    </button>
+                    <button class="name-edit-btn cancel-name-btn">
+                      <i class="fas fa-times"></i> Cancel
+                    </button>
+                  </div>
+                  <div class="image-date">${date}</div>
+                  <div class="image-actions">
+                    <button class="action-button zoom-image" title="View Details">
+                      <i class="fas fa-search-plus"></i>
+                    </button>
+                    <button class="action-button download-image" title="Download Analysis">
+                      <i class="fas fa-download"></i>
+                    </button>
+                    <button class="action-button delete-image" title="Delete" data-id="${
+                      image.public_id
+                    }">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </div>
+              `;
+              gallery.appendChild(imageDiv);
+
+              // Add name editing functionality
+              const editBtn = imageDiv.querySelector(".edit-name-btn");
+              const nameInput = imageDiv.querySelector(".plant-name-input");
+              const editActions = imageDiv.querySelector(".name-edit-actions");
+              const saveBtn = imageDiv.querySelector(".save-name-btn");
+              const cancelBtn = imageDiv.querySelector(".cancel-name-btn");
+              const plantTypeText = imageDiv.querySelector(".plant-type-text");
+              const originalName = image.plantType || "Unknown Plant";
+
+              editBtn.addEventListener("click", () => {
+                nameInput.classList.add("active");
+                editActions.classList.add("active");
+                nameInput.focus();
+              });
+
+              cancelBtn.addEventListener("click", () => {
+                nameInput.classList.remove("active");
+                editActions.classList.remove("active");
+                nameInput.value = originalName;
+              });
+
+              saveBtn.addEventListener("click", async () => {
+                const newName = nameInput.value.trim();
+                if (!newName) return;
+
+                try {
+                  const response = await fetch("/update-plant-name", {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                      imageId: image._id,
+                      newName: newName,
+                    }),
+                  });
+
+                  if (response.ok) {
+                    plantTypeText.textContent = newName;
+                    nameInput.classList.remove("active");
+                    editActions.classList.remove("active");
+
+                    // Show success message
+                    const toast = document.createElement("div");
+                    toast.className = "toast success";
+                    toast.textContent = "Plant name updated successfully!";
+                    document.body.appendChild(toast);
+                    setTimeout(() => toast.remove(), 3000);
+                  } else {
+                    throw new Error("Failed to update plant name");
+                  }
+                } catch (error) {
+                  console.error("Error updating plant name:", error);
+                  // Show error message
+                  const toast = document.createElement("div");
+                  toast.className = "toast error";
+                  toast.textContent =
+                    "Failed to update plant name. Please try again.";
+                  document.body.appendChild(toast);
+                  setTimeout(() => toast.remove(), 3000);
+                }
+              });
+
+              // Add your existing click handlers
+              const zoomBtn = imageDiv.querySelector(".zoom-image");
+              const downloadBtn = imageDiv.querySelector(".download-image");
+              const deleteBtn = imageDiv.querySelector(".delete-image");
+              const imgElement = imageDiv.querySelector("img");
+
+              zoomBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                openImageModal(image);
+              });
+
+              downloadBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                downloadAnalysis(image);
+              });
+
+              deleteBtn.addEventListener("click", async (e) => {
+                e.stopPropagation();
+                if (confirm("Are you sure you want to delete this image?")) {
+                  await deleteImage(image.public_id);
+                }
+              });
+
+              imgElement.addEventListener("click", () => {
+                openImageModal(image);
+              });
+            });
+          } else {
+            gallery.innerHTML = `
+              <div class="empty-gallery">
+                <i class="fas fa-leaf"></i>
+                <h3>No Plants Yet</h3>
+                <p>Start by uploading your first plant image!</p>
+              </div>
+            `;
+          }
+        } catch (error) {
+          console.error("Error loading images:", error);
+        }
+      }
+
+      // Load user profile
+      async function loadUserProfile() {
+        try {
+          const response = await fetch("/user-profile");
+          const data = await response.json();
+
+          // Update profile name with fallback to username
+          const displayName = data.name || data.username;
+          document.getElementById("profileName").textContent = displayName;
+          document.getElementById(
+            "profileUsername"
+          ).textContent = `@${data.username}`;
+
+          // Update user info in header
+          const userInfoSpan = document.querySelector(
+            ".user-info span:last-child"
+          );
+          if (userInfoSpan) {
+            userInfoSpan.textContent = displayName;
+          }
+        } catch (error) {
+          console.error("Error loading user profile:", error);
+        }
+      }
+
+      // Enhanced modal opening
+      function openImageModal(image) {
+        const modal = document.getElementById("imageModal");
+        const modalImg = document.getElementById("modalImage");
+        const modalPlantType = document.getElementById("modalPlantType");
+        const modalAnalysis = document.getElementById("modalAnalysis");
+        const modalDate = document.getElementById("modalDate");
+
+        modalImg.src = image.url;
+        modalPlantType.textContent = image.plantType || "Unknown Plant";
+        modalAnalysis.textContent = image.analysis || "No analysis available";
+        modalDate.textContent = new Date(image.createdAt).toLocaleString();
+
+        modal.style.display = "flex";
+        setTimeout(() => {
+          modal.classList.add("show");
+        }, 10);
+        document.body.style.overflow = "hidden";
+      }
+
+      // Add modal close functionality
+      function closeImageModal() {
+        const modal = document.getElementById("imageModal");
+        modal.classList.remove("show");
+        setTimeout(() => {
+          modal.style.display = "none";
+          document.body.style.overflow = "auto";
+        }, 300);
+      }
+
+      // Add event listeners for closing modal
+      document
+        .querySelector(".close-modal")
+        .addEventListener("click", closeImageModal);
+
+      // Close modal when clicking outside the image
+      document.getElementById("imageModal").addEventListener("click", (e) => {
+        if (e.target === document.getElementById("imageModal")) {
+          closeImageModal();
+        }
+      });
+
+      // Add keyboard support for closing modal
+      document.addEventListener("keydown", (e) => {
+        if (
+          e.key === "Escape" &&
+          document.getElementById("imageModal").style.display === "flex"
+        ) {
+          closeImageModal();
+        }
+      });
+
+      // Search functionality
+      const searchInput = document.getElementById("searchInput");
+      searchInput.addEventListener("input", (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        const items = document.querySelectorAll(".gallery-item");
+
+        items.forEach((item) => {
+          const plantType = item
+            .querySelector(".plant-type-text")
+            .textContent.toLowerCase();
+          const date = item
+            .querySelector(".image-date")
+            .textContent.toLowerCase();
+          const shouldShow =
+            plantType.includes(searchTerm) || date.includes(searchTerm);
+          item.style.display = shouldShow ? "block" : "none";
+        });
+      });
+
+      // Initialize
+      document.addEventListener("DOMContentLoaded", () => {
+        loadUserProfile();
+        loadUserImages();
+      });
+
+      // Delete image functionality
+      async function deleteImage(publicId) {
+        try {
+          const response = await fetch("/delete-image", {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ public_id: publicId }),
+          });
+
+          if (response.ok) {
+            loadUserImages();
+          } else {
+            alert("Failed to delete image");
+          }
+        } catch (error) {
+          console.error("Error deleting image:", error);
+          alert("Error deleting image");
+        }
+      }
+
+      // Profile editing functionality
+      document.addEventListener("DOMContentLoaded", function () {
+        // Get DOM elements
+        const profileEditModal = document.getElementById("profileEditModal");
+        const profileEditForm = document.getElementById("profileEditForm");
+        const editProfileBtn = document.getElementById("editProfileBtn");
+        const closeProfileEdit = document.getElementById("closeProfileEdit");
+        const cancelProfileEdit = document.getElementById("cancelProfileEdit");
+        const profilePictureInput = document.getElementById(
+          "profilePictureInput"
+        );
+        const previewImage = document.getElementById("previewImage");
+        const saveProfileBtn = document.getElementById("saveProfileBtn");
+
+        // Load profile data when modal opens
+        async function loadProfileData() {
+          try {
+            const response = await fetch("/user-profile-data");
+            const userData = await response.json();
+
+            document.getElementById("displayName").value =
+              userData.displayName || "";
+            if (userData.profilePicture) {
+              previewImage.src = userData.profilePicture;
+            }
+          } catch (error) {
+            console.error("Error loading profile data:", error);
+            showToast("Error loading profile data", "error");
+          }
+        }
+
+        // Show toast notification
+        function showToast(message, type = "success") {
+          const toast = document.createElement("div");
+          toast.className = `toast ${type}`;
+          toast.textContent = message;
+          document.body.appendChild(toast);
+          setTimeout(() => toast.remove(), 3000);
+        }
+
+        // Handle profile picture preview
+        profilePictureInput.addEventListener("change", function (e) {
+          const file = e.target.files[0];
+          if (file) {
+            if (file.size > 5 * 1024 * 1024) {
+              // 5MB limit
+              showToast("Image size should be less than 5MB", "error");
+              this.value = ""; // Clear the input
+              return;
+            }
+
+            if (!file.type.startsWith("image/")) {
+              showToast("Please select an image file", "error");
+              this.value = ""; // Clear the input
+              return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+              const previewImage = document.getElementById("previewImage");
+              if (previewImage.tagName.toLowerCase() === "img") {
+                previewImage.src = e.target.result;
+              } else {
+                // If it's currently an emoji div, replace it with an img
+                const img = document.createElement("img");
+                img.src = e.target.result;
+                img.id = "previewImage";
+                img.alt = "Profile Picture";
+                previewImage.parentNode.replaceChild(img, previewImage);
+              }
+            };
+            reader.readAsDataURL(file);
+          }
+        });
+
+        // Open modal
+        editProfileBtn.addEventListener("click", function () {
+          profileEditModal.classList.add("active");
+          loadProfileData();
+        });
+
+        // Close modal functions
+        function closeModal() {
+          profileEditModal.classList.remove("active");
+          profileEditForm.reset();
+          previewImage.src = "/default-avatar.png";
+        }
+
+        closeProfileEdit.addEventListener("click", closeModal);
+        cancelProfileEdit.addEventListener("click", closeModal);
+        profileEditModal.addEventListener("click", function (e) {
+          if (e.target === profileEditModal) {
+            closeModal();
+          }
+        });
+
+        // Handle form submission
+        profileEditForm.addEventListener("submit", async function (e) {
+          e.preventDefault();
+
+          // Disable save button and show loading state
+          saveProfileBtn.disabled = true;
+          saveProfileBtn.innerHTML =
+            '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+          try {
+            const formData = new FormData(this);
+
+            const response = await fetch("/update-profile", {
+              method: "POST",
+              body: formData,
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+              // Update all UI elements that display user information
+              const profileName = document.getElementById("profileName");
+              const userInfoSpan = document.querySelector(
+                ".user-info span:last-child"
+              );
+              const displayName = data.user.displayName || data.user.username;
+
+              // Update display name everywhere it appears
+              if (profileName) profileName.textContent = displayName;
+              if (userInfoSpan) userInfoSpan.textContent = displayName;
+
+              // Update profile pictures
+              if (data.user.profilePicture) {
+                const profilePictures = [
+                  document.getElementById("profileAvatar"),
+                  document.getElementById("previewImage"),
+                  document.querySelector(".user-info img"),
+                ];
+
+                profilePictures.forEach((img) => {
+                  if (img) {
+                    if (img.tagName.toLowerCase() === "img") {
+                      img.src = data.user.profilePicture;
+                      img.onerror = () => {
+                        img.src = "/images/default-avatar.jpg";
+                      };
+                    } else if (
+                      data.user.profilePicture.startsWith("http") ||
+                      data.user.profilePicture.startsWith("/")
+                    ) {
+                      // Replace emoji div with img if needed
+                      const newImg = document.createElement("img");
+                      newImg.src = data.user.profilePicture;
+                      newImg.alt = "Profile Picture";
+                      newImg.id = img.id;
+                      newImg.className = img.className;
+                      newImg.onerror = () => {
+                        newImg.src = "/images/default-avatar.jpg";
+                      };
+                      img.parentNode.replaceChild(newImg, img);
+                    }
+                  }
+                });
+              }
+
+              showToast("Profile updated successfully!", "success");
+              closeModal();
+            } else {
+              throw new Error(data.error || "Failed to update profile");
+            }
+          } catch (error) {
+            console.error("Error updating profile:", error);
+            showToast(error.message, "error");
+          } finally {
+            // Re-enable save button
+            saveProfileBtn.disabled = false;
+            saveProfileBtn.innerHTML =
+              '<i class="fas fa-save"></i> Save Changes';
+          }
+        });
+      });
+
+      // Add this to your existing DOMContentLoaded event listener
+      document.addEventListener("DOMContentLoaded", () => {
+        const editProfileBtn = document.getElementById("editProfileBtn");
+        const downloadHistoryBtn =
+          document.getElementById("downloadHistoryBtn");
+
+        // Add ripple effect to buttons
+        [editProfileBtn, downloadHistoryBtn].forEach((button) => {
+          button.addEventListener("click", function (e) {
+            const ripple = document.createElement("div");
+            ripple.classList.add("ripple");
+
+            const rect = this.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            ripple.style.left = x + "px";
+            ripple.style.top = y + "px";
+
+            this.appendChild(ripple);
+
+            setTimeout(() => {
+              ripple.remove();
+            }, 600);
+          });
+        });
+
+        // Add hover animation
+        [editProfileBtn, downloadHistoryBtn].forEach((button) => {
+          button.addEventListener("mouseenter", function () {
+            this.style.transform = "translateY(-2px)";
+          });
+
+          button.addEventListener("mouseleave", function () {
+            this.style.transform = "translateY(0)";
+          });
+        });
       });
     </script>
   </body>
