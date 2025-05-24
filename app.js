@@ -13,29 +13,67 @@ const cloudinary = require("cloudinary").v2;
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
 
 const app = express();
+
+// Security middleware
+app.disable("x-powered-by");
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  next();
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: "Something broke!" });
+});
+
+// Body parser configuration with increased limits
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+
+// Cookie parser middleware
+app.use(cookieParser());
+
+// Static files middleware
+app.use(express.static("public"));
+
+// Set view engine
+app.set("view engine", "ejs");
+
 const port = process.env.PORT || 3000;
 
-//Connect to mongoose
-const URL = process.env.MONGODB_URL;
-
-//connect to mongodb
-const connectToDB = async () => {
-  try {
-    await mongoose.connect(URL, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-    console.log("✅ MongoDB connected successfully");
-  } catch (error) {
-    console.error("❌ Error connecting to MongoDB:", error.message);
-    process.exit(1);
+// MongoDB connection with retry logic
+const connectWithRetry = async (retries = 5, interval = 5000) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await mongoose.connect(process.env.MONGODB_URL, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+        serverSelectionTimeoutMS: 5000,
+      });
+      console.log("✅ MongoDB connected successfully");
+      return;
+    } catch (error) {
+      console.error(
+        `❌ Attempt ${i + 1} failed. Error connecting to MongoDB:`,
+        error.message
+      );
+      if (i < retries - 1) {
+        console.log(`Retrying in ${interval / 1000} seconds...`);
+        await new Promise((resolve) => setTimeout(resolve, interval));
+      }
+    }
   }
+  throw new Error("Failed to connect to MongoDB after multiple attempts");
 };
 
-//call the function
-connectToDB();
+// Initialize MongoDB connection
+connectWithRetry().catch((error) => {
+  console.error("Fatal MongoDB connection error:", error);
+  process.exit(1);
+});
 
 //Post
 const postSchema = new mongoose.Schema(
@@ -104,10 +142,7 @@ const userSchema = new mongoose.Schema(
 const User = mongoose.model("User", userSchema);
 
 //!Middlewares
-//!Set the view engine
-app.set("view engine", "ejs");
-app.use(cookieParser());
-//!--isAuthenticated (Authentication)
+//!-isAuthenticated (Authentication)
 const isAuthenticated = (req, res, next) => {
   //Check the user in the cookies
   const userDataCookie = req.cookies.userData;
@@ -292,7 +327,6 @@ const profilePictureUpload = multer({
 
 //initialize Google Generative AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-app.use(express.static("public"));
 
 //routes
 app.post("/upload1", uploadMiddleware.single("image"), async (req, res) => {
@@ -720,7 +754,25 @@ app.get("/user-profile-data", isAuthenticated, async (req, res) => {
   }
 });
 
-//start the server
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+// Error handling for uncaught exceptions
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught Exception:", error);
+  // Graceful shutdown
+  process.exit(1);
 });
+
+process.on("unhandledRejection", (error) => {
+  console.error("Unhandled Rejection:", error);
+  // Graceful shutdown
+  process.exit(1);
+});
+
+// Start server only if running directly
+if (require.main === module) {
+  app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+  });
+}
+
+// Export the Express app
+module.exports = app;

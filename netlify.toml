@@ -1,13 +1,25 @@
 [build]
-  command = "npm run build"
-  publish = "public"
+  command = "npm install"
   functions = "netlify/functions"
+  publish = "public"
 
 [build.environment]
   NODE_VERSION = "18"
 
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = ["express"]
+
 [[redirects]]
   from = "/*"
   to = "/.netlify/functions/server"
-  status = 200 
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin" 
   
