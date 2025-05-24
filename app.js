@@ -39,8 +39,9 @@ app.use(cookieParser());
 // Static files middleware
 app.use(express.static("public"));
 
-// Set view engine
+// Set view engine and views directory
 app.set("view engine", "ejs");
+app.set("views", path.join(__dirname, "views"));
 
 const port = process.env.PORT || 3000;
 

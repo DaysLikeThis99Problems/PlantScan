@@ -5,15 +5,35 @@
 
 [build.environment]
   NODE_VERSION = "18"
+  NPM_FLAGS = "--no-optional"
 
 [functions]
   node_bundler = "esbuild"
-  external_node_modules = ["express"]
+  external_node_modules = [
+    "express",
+    "ejs",
+    "cookie-parser",
+    "multer",
+    "multer-storage-cloudinary",
+    "pdfkit"
+  ]
+  included_files = [
+    "views/**",
+    "public/**"
+  ]
+
+[dev]
+  framework = "#custom"
+  command = "npm run dev"
+  targetPort = 3000
+  port = 8888
+  publish = "public"
 
 [[redirects]]
   from = "/*"
   to = "/.netlify/functions/server"
   status = 200
+  force = true
 
 [[headers]]
   for = "/*"
@@ -21,5 +41,6 @@
     X-Frame-Options = "DENY"
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
-    Referrer-Policy = "strict-origin-when-cross-origin" 
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Content-Security-Policy = "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: *.cloudinary.com; img-src 'self' data: blob: *.cloudinary.com;" 
   
