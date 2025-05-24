@@ -248,7 +248,8 @@ cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
-//Configure milter storage cloudinary
+
+//Configure multer storage cloudinary
 const storage = new CloudinaryStorage({
   cloudinary,
   params: {
@@ -264,9 +265,11 @@ const storage = new CloudinaryStorage({
     ],
   },
 });
-const upload1 = multer({
+
+// Main upload middleware for image analysis
+const uploadMiddleware = multer({
   storage,
-  limits: 1024 * 1020 * 10, //25MB limit
+  limits: 1024 * 1020 * 10, //10MB limit
   fileFilter: function (req, file, cb) {
     if (file.mimetype.startsWith("image/")) {
       cb(null, true);
@@ -276,9 +279,9 @@ const upload1 = multer({
   },
 });
 
-// Configure multer for profile picture upload
+// Profile picture upload middleware
 const profilePictureUpload = multer({
-  storage: multer.memoryStorage(),
+  storage, // Use the same Cloudinary storage
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB limit
   },
@@ -296,7 +299,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 app.use(express.static("public"));
 
 //routes
-app.post("/upload1", upload1.single("image"), async (req, res) => {
+app.post("/upload1", uploadMiddleware.single("image"), async (req, res) => {
   try {
     const uploaded = await Image.create({
       url: req.file.path,
@@ -341,16 +344,16 @@ app.get("/username", (req, res) => {
   res.json({ username: req.username });
 });
 
-app.post("/analyze", upload.single("image"), async (req, res) => {
+app.post("/analyze", uploadMiddleware.single("image"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: "No image file uploaded" });
     }
 
-    const imagePath = req.file.path;
-    const imageData = await fsPromises.readFile(imagePath, {
-      encoding: "base64",
-    });
+    // Get the image data from Cloudinary URL
+    const imageResponse = await fetch(req.file.path);
+    const imageBuffer = await imageResponse.buffer();
+    const imageData = imageBuffer.toString("base64");
 
     // Use the Gemini model to analyze the image
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
@@ -365,9 +368,6 @@ app.post("/analyze", upload.single("image"), async (req, res) => {
     ]);
 
     const plantInfo = result.response.text();
-
-    // Clean up: delete the uploaded file
-    await fsPromises.unlink(imagePath);
 
     // Respond with the analysis result and the image data
     res.json({
