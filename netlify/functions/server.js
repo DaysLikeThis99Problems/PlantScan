@@ -162,7 +162,30 @@ app.get("/register", async (req, res) => {
     res.status(500).json({ error: "Failed to render register page" });
   }
 });
-
+app.post("/login", async (req, res) => {
+  try {
+    // Handle the login form submission here
+    const { username, password } = req.body;
+    // Authenticate the user
+    // ...
+    res.redirect("/dashboard");
+  } catch (error) {
+    console.error("Error during login:", error);
+    res.status(500).send("Error during login");
+  }
+});
+app.post("/register", async (req, res) => {
+  try {
+    // Handle the login form submission here
+    const { username, password } = req.body;
+    // Authenticate the user
+    // ...
+    res.redirect("/dashboard");
+  } catch (error) {
+    console.error("Error during login:", error);
+    res.status(500).send("Error during login");
+  }
+});
 app.get("/dashboard", async (req, res) => {
   try {
     // Add any data you want to pass to the dashboard
