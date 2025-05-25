@@ -689,19 +689,3 @@ exports.handler = async (event, context) => {
 //     };
 //   }
 // };
-
-app.post("/download", async (req, res) => {
-  try {
-    // Handle the download request here
-    const { result, image } = req.body;
-    // Generate the PDF file
-    // ...
-    const pdfBuffer = // generate the PDF buffer here
-    res.set("Content-Type", "application/pdf");
-    res.set("Content-Disposition", `attachment; filename=plant_analysis_report_${Date.now()}.pdf`);
-    res.send(pdfBuffer);
-  } catch (error) {
-    console.error("Error during download:", error);
-    res.status(500).send("Error during download");
-  }
-});
