@@ -133,60 +133,60 @@ const renderView = async (view, options = {}) => {
   }
 };
 
-// Log all requests
-app.use((req, res, next) => {
-  console.log("Request received:", {
-    method: req.method,
-    path: req.path,
-    contentType: req.headers["content-type"],
-  });
-  next();
+// // Log all requests
+// app.use((req, res, next) => {
+//   console.log("Request received:", {
+//     method: req.method,
+//     path: req.path,
+//     contentType: req.headers["content-type"],
+//   });
+//   next();
+// });
+
+// Route handlers
+app.get("/", async (req, res) => {
+  try {
+    const html = await renderView("index");
+    res.send(html);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to render index page" });
+  }
 });
 
-// // Route handlers
-// app.get("/", async (req, res) => {
-//   try {
-//     const html = await renderView("index");
-//     res.send(html);
-//   } catch (error) {
-//     res.status(500).json({ error: "Failed to render index page" });
-//   }
-// });
+app.get("/login", async (req, res) => {
+  try {
+    const html = await renderView("login");
+    res.send(html);
+  } catch (error) {
+    console.error("Login page render error:", error);
+    res.status(500).json({ error: "Failed to render login page" });
+  }
+});
 
-// app.get("/login", async (req, res) => {
-//   try {
-//     const html = await renderView("login");
-//     res.send(html);
-//   } catch (error) {
-//     console.error("Login page render error:", error);
-//     res.status(500).json({ error: "Failed to render login page" });
-//   }
-// });
+app.get("/register", async (req, res) => {
+  try {
+    const html = await renderView("register");
+    res.send(html);
+  } catch (error) {
+    console.error("Register page render error:", error);
+    res.status(500).json({ error: "Failed to render register page" });
+  }
+});
 
-// app.get("/register", async (req, res) => {
-//   try {
-//     const html = await renderView("register");
-//     res.send(html);
-//   } catch (error) {
-//     console.error("Register page render error:", error);
-//     res.status(500).json({ error: "Failed to render register page" });
-//   }
-// });
-
-// app.get("/dashboard", async (req, res) => {
-//   try {
-//     // Add any data you want to pass to the dashboard
-//     const dashboardData = {
-//       user: req.user, // If you have user data
-//       recentAnalyses: [], // Add your data here
-//     };
-//     const html = await renderView("dashboard", dashboardData);
-//     res.send(html);
-//   } catch (error) {
-//     console.error("Dashboard page render error:", error);
-//     res.status(500).json({ error: "Failed to render dashboard page" });
-//   }
-// });
+app.get("/dashboard", async (req, res) => {
+  try {
+    // Add any data you want to pass to the dashboard
+    const dashboardData = {
+      user: req.user, // If you have user data
+      recentAnalyses: [], // Add your data here
+    };
+    const html = await renderView("dashboard", dashboardData);
+    res.send(html);
+  } catch (error) {
+    console.error("Dashboard page render error:", error);
+    res.status(500).json({ error: "Failed to render dashboard page" });
+  }
+});
 
 // Test endpoint
 app.get("/test", (req, res) => {
