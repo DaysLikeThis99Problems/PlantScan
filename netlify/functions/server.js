@@ -3,6 +3,41 @@ const serverless = require("serverless-http");
 const path = require("path");
 const cookieParser = require("cookie-parser");
 const fs = require("fs");
+const multer = require("multer");
+const cloudinary = require("cloudinary").v2;
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+
+// Configure cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// Configure Cloudinary storage
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: "images-folder",
+    allowed_formats: ["jpg", "jpeg", "png", "gif"],
+    transformation: [{ width: 800, height: 600, crop: "fill" }],
+  },
+});
+
+// Configure multer
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image files are allowed"));
+    }
+  },
+});
 
 // Helper function to resolve paths
 const resolvePath = (relativePath) => {
@@ -62,6 +97,77 @@ try {
   mainApp.set("views", viewsPath);
   mainApp.use(express.static(publicPath));
 
+  // Add upload endpoints if they don't exist
+  if (
+    !mainApp._router.stack.some(
+      (layer) => layer.route && layer.route.path === "/upload1"
+    )
+  ) {
+    mainApp.post("/upload1", upload.single("image"), async (req, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ error: "No file uploaded" });
+        }
+
+        console.log("File upload successful:", {
+          path: req.file.path,
+          filename: req.file.filename,
+          mimetype: req.file.mimetype,
+        });
+
+        res.status(201).json({
+          message: "Image uploaded successfully!",
+          data: {
+            url: req.file.path,
+            public_id: req.file.filename,
+          },
+        });
+      } catch (error) {
+        console.error("Upload error:", error);
+        res.status(500).json({
+          error: "Error uploading image",
+          details: error.message,
+        });
+      }
+    });
+  }
+
+  if (
+    !mainApp._router.stack.some(
+      (layer) => layer.route && layer.route.path === "/analyze"
+    )
+  ) {
+    mainApp.post("/analyze", upload.single("image"), async (req, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ error: "No file uploaded" });
+        }
+
+        console.log("File received for analysis:", {
+          path: req.file.path,
+          filename: req.file.filename,
+          mimetype: req.file.mimetype,
+        });
+
+        // Get the image data from Cloudinary URL
+        const imageResponse = await fetch(req.file.path);
+        const imageBuffer = await imageResponse.buffer();
+        const imageData = imageBuffer.toString("base64");
+
+        res.json({
+          message: "Image received for analysis",
+          image: `data:${req.file.mimetype};base64,${imageData}`,
+        });
+      } catch (error) {
+        console.error("Analysis error:", error);
+        res.status(500).json({
+          error: "Error processing image",
+          details: error.message,
+        });
+      }
+    });
+  }
+
   // Merge the apps
   app = mainApp || baseApp;
 
@@ -83,6 +189,23 @@ try {
     console.log("View engine:", this.get("view engine"));
     return originalRender(name, options, callback);
   };
+
+  // Add error handling for multer errors
+  app.use((error, req, res, next) => {
+    if (error instanceof multer.MulterError) {
+      if (error.code === "LIMIT_FILE_SIZE") {
+        return res.status(400).json({
+          error: "File too large",
+          details: "Maximum file size is 10MB",
+        });
+      }
+      return res.status(400).json({
+        error: "File upload error",
+        details: error.message,
+      });
+    }
+    next(error);
+  });
 } catch (error) {
   console.error("Error importing app:", error);
   app = express();
@@ -142,6 +265,7 @@ const handler = serverless(app, {
     "text/css",
     "text/html",
     "application/json",
+    "multipart/form-data",
   ],
   provider: "aws",
   basePath: "/.netlify/functions/server",

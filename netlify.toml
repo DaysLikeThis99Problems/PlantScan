@@ -15,6 +15,7 @@
     "cookie-parser",
     "multer",
     "multer-storage-cloudinary",
+    "cloudinary",
     "pdfkit"
   ]
   included_files = [
@@ -27,6 +28,9 @@
   ]
   directory = "netlify/functions"
 
+[functions.server]
+  maxDuration = 30
+
 [dev]
   framework = "#custom"
   command = "npm run dev"
@@ -35,10 +39,24 @@
   publish = "public"
 
 [[redirects]]
-  from = "/images/*"
-  to = "/.netlify/functions/server/images/:splat"
+  from = "/upload1"
+  to = "/.netlify/functions/server/upload1"
   status = 200
   force = true
+  [redirects.headers]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+
+[[redirects]]
+  from = "/analyze"
+  to = "/.netlify/functions/server/analyze"
+  status = 200
+  force = true
+  [redirects.headers]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
 
 [[redirects]]
   from = "/*"
