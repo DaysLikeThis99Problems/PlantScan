@@ -26,13 +26,23 @@
       a{
         margin: 10px 10px;
       }
+      .error-message {
+        color: #dc3545;
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        border-radius: 4px;
+        padding: 10px;
+        margin-bottom: 15px;
+        display: none;
+      }
     </style>
   </head>
   <body>
     <div class="container">
       <div class="login-container">
         <h1 class="text-center">Login</h1>
-        <form action="/login" method="post">
+        <div id="errorMessage" class="error-message"></div>
+        <form id="loginForm" action="/login" method="post">
           <div class="mb-3">
             <label for="username" class="form-label">Username</label>
             <input
@@ -41,7 +51,7 @@
               name="username"
               id="username"
               placeholder="Enter your username"
-              value="john"
+              required
             />
           </div>
           <div class="mb-3">
@@ -51,8 +61,8 @@
               class="form-control"
               name="password"
               id="password"
-              value="123"
               placeholder="Enter your password"
+              required
             />
           </div>
           <button type="submit" class="btn btn-primary login-button">
@@ -65,5 +75,36 @@
       <a href="/register" class="btn btn-primary cta-button">Register</a>
       <a href="/" class="btn btn-primary cta-button">Home</a>
     </div>
+
+    <script>
+      document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const errorMessage = document.getElementById('errorMessage');
+        errorMessage.style.display = 'none';
+
+        try {
+          const formData = new FormData(e.target);
+          const response = await fetch('/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams(formData),
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || 'Login failed');
+          }
+
+          // Redirect on successful login
+          window.location.href = '/dashboard';
+        } catch (error) {
+          errorMessage.textContent = error.message;
+          errorMessage.style.display = 'block';
+        }
+      });
+    </script>
   </body>
 </html>

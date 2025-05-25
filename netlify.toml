@@ -9,10 +9,11 @@
 
 [functions]
   node_bundler = "esbuild"
-  external_node_modules = ["express", "ejs", "multer", "cloudinary", "@google/generative-ai"]
+  external_node_modules = ["express", "ejs", "multer", "cloudinary", "@google/generative-ai", "mongoose", "bcrypt"]
   included_files = [
     "views/**/*",
-    "public/**/*"
+    "public/**/*",
+    "netlify/models/**/*"
   ]
 
 [functions.server]
@@ -63,6 +64,6 @@
   for = "/*"
   [headers.values]
     Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Headers = "Content-Type"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
     Access-Control-Allow-Methods = "GET, POST, OPTIONS" 
   

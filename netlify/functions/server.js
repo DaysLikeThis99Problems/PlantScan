@@ -9,6 +9,24 @@ const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const fetch = require("node-fetch");
 const ejs = require("ejs");
+const bcrypt = require("bcrypt");
+const mongoose = require("mongoose");
+const User = require("../models/user");
+
+// MongoDB Connection with better error handling
+mongoose
+  .connect(process.env.MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => {
+    console.log("Connected to MongoDB");
+  })
+  .catch((err) => {
+    console.error("MongoDB connection error:", err);
+    // Don't exit the process, but log the error
+    console.error("Application will continue without database connection");
+  });
 
 // Initialize Google Generative AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -110,6 +128,9 @@ app.set("views", path.join(__dirname, "../../views"));
 // Serve static files
 app.use(express.static(path.join(__dirname, "../../public")));
 
+// Cookie parser middleware
+app.use(cookieParser());
+
 // Log incoming requests
 app.use((req, res, next) => {
   console.log("Request:", {
@@ -143,6 +164,7 @@ app.get("/", async (req, res) => {
   }
 });
 
+// Login routes
 app.get("/login", async (req, res) => {
   try {
     const html = await renderView("login");
@@ -150,6 +172,50 @@ app.get("/login", async (req, res) => {
   } catch (error) {
     console.error("Login page render error:", error);
     res.status(500).json({ error: "Failed to render login page" });
+  }
+});
+
+app.post("/login", async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    console.log("Login attempt for username:", username);
+
+    // Find the user
+    const userFound = await User.findOne({ username });
+
+    if (!userFound) {
+      console.log("User not found:", username);
+      return res.status(401).json({ error: "Invalid login credentials" });
+    }
+
+    // Compare password
+    const isPasswordValid = await bcrypt.compare(password, userFound.password);
+
+    if (!isPasswordValid) {
+      console.log("Invalid password for user:", username);
+      return res.status(401).json({ error: "Invalid login credentials" });
+    }
+
+    // Create user data for cookie
+    const userData = {
+      username: userFound.username,
+      displayName: userFound.displayName || userFound.username,
+      role: userFound.role,
+    };
+
+    // Set cookie
+    res.cookie("userData", JSON.stringify(userData), {
+      maxAge: 3 * 24 * 60 * 60 * 1000, // 3 days
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
+    console.log("Login successful for user:", username);
+    res.redirect("/dashboard");
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({ error: "Error during login" });
   }
 });
 
@@ -382,6 +448,39 @@ app.post("/analyze", upload.single("image"), async (req, res) => {
       console.error("Failed to render error page:", renderError);
       res.status(500).send("Failed to analyze image and render error page");
     }
+  }
+});
+
+// Add register endpoint after the login routes
+app.post("/register", async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    console.log("Register attempt for username:", username);
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
+      return res.status(400).json({ error: "Username already exists" });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create user
+    const user = await User.create({
+      username,
+      password: hashedPassword,
+      displayName: username,
+      profilePicture: "/images/default-avatar.jpg",
+    });
+
+    console.log("User registered successfully:", username);
+
+    // Redirect to login page
+    res.json({ success: true, message: "Registration successful" });
+  } catch (error) {
+    console.error("Registration error:", error);
+    res.status(500).json({ error: "Error during registration" });
   }
 });
 
