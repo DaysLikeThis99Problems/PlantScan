@@ -18,12 +18,12 @@
         width: 100%;
         padding: 10px;
       }
-      .a{
+      .a {
         display: flex;
         justify-content: center;
         align-items: center;
       }
-      a{
+      a {
         margin: 10px 10px;
       }
       .error-message {
@@ -77,34 +77,47 @@
     </div>
 
     <script>
-      document.getElementById('loginForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const errorMessage = document.getElementById('errorMessage');
-        errorMessage.style.display = 'none';
+      document
+        .getElementById("loginForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const errorMessage = document.getElementById("errorMessage");
+          errorMessage.style.display = "none";
 
-        try {
-          const formData = new FormData(e.target);
-          const response = await fetch('/login', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams(formData),
-          });
+          try {
+            const formData = new FormData(e.target);
+            const response = await fetch("/.netlify/functions/server/login", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+              },
+              body: new URLSearchParams(formData),
+            });
 
-          const data = await response.json();
+            if (response.redirected) {
+              window.location.href = response.url;
+              return;
+            }
 
-          if (!response.ok) {
-            throw new Error(data.error || 'Login failed');
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.includes("application/json")) {
+              const data = await response.json();
+              if (!response.ok) {
+                throw new Error(data.error || "Login failed");
+              }
+              // If JSON response is successful, redirect
+              window.location.href = "/dashboard";
+            } else {
+              // If not JSON, it might be a direct redirect
+              window.location.href = "/dashboard";
+            }
+          } catch (error) {
+            console.error("Login error:", error);
+            errorMessage.textContent =
+              error.message || "Login failed. Please try again.";
+            errorMessage.style.display = "block";
           }
-
-          // Redirect on successful login
-          window.location.href = '/dashboard';
-        } catch (error) {
-          errorMessage.textContent = error.message;
-          errorMessage.style.display = 'block';
-        }
-      });
+        });
     </script>
   </body>
 </html>

@@ -35,15 +35,6 @@
         margin-bottom: 15px;
         display: none;
       }
-      .success-message {
-        color: #198754;
-        background-color: #d1e7dd;
-        border: 1px solid #badbcc;
-        border-radius: 4px;
-        padding: 10px;
-        margin-bottom: 15px;
-        display: none;
-      }
     </style>
   </head>
   <body>
@@ -51,7 +42,6 @@
       <div class="register-container">
         <h1 class="text-center">Register</h1>
         <div id="errorMessage" class="error-message"></div>
-        <div id="successMessage" class="success-message"></div>
         <form id="registerForm" action="/register" method="post">
           <div class="mb-3">
             <label for="username" class="form-label">Username</label>
@@ -94,37 +84,42 @@
         .addEventListener("submit", async (e) => {
           e.preventDefault();
           const errorMessage = document.getElementById("errorMessage");
-          const successMessage = document.getElementById("successMessage");
           errorMessage.style.display = "none";
-          successMessage.style.display = "none";
 
           try {
             const formData = new FormData(e.target);
-            const response = await fetch("/register", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-              },
-              body: new URLSearchParams(formData),
-            });
+            const response = await fetch(
+              "/.netlify/functions/server/register",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/x-www-form-urlencoded",
+                },
+                body: new URLSearchParams(formData),
+              }
+            );
 
-            const data = await response.json();
-
-            if (!response.ok) {
-              throw new Error(data.error || "Registration failed");
+            if (response.redirected) {
+              window.location.href = response.url;
+              return;
             }
 
-            // Show success message
-            successMessage.textContent =
-              "Registration successful! Redirecting to login...";
-            successMessage.style.display = "block";
-
-            // Redirect to login page after a short delay
-            setTimeout(() => {
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.includes("application/json")) {
+              const data = await response.json();
+              if (!response.ok) {
+                throw new Error(data.error || "Registration failed");
+              }
+              // If JSON response is successful, redirect to login
               window.location.href = "/login";
-            }, 2000);
+            } else {
+              // If not JSON, it might be a direct redirect
+              window.location.href = "/login";
+            }
           } catch (error) {
-            errorMessage.textContent = error.message;
+            console.error("Registration error:", error);
+            errorMessage.textContent =
+              error.message || "Registration failed. Please try again.";
             errorMessage.style.display = "block";
           }
         });

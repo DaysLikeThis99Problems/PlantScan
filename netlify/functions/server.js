@@ -9,11 +9,11 @@ const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const fetch = require("node-fetch");
 const ejs = require("ejs");
-const bcrypt = require("bcryptjs");
+const bcrypt = require("bcrypt");
 const mongoose = require("mongoose");
 const User = require("../models/user");
 
-// MongoDB Connection with better error handling
+// MongoDB Connection
 mongoose
   .connect(process.env.MONGODB_URI, {
     useNewUrlParser: true,
@@ -24,8 +24,6 @@ mongoose
   })
   .catch((err) => {
     console.error("MongoDB connection error:", err);
-    // Don't exit the process, but log the error
-    console.error("Application will continue without database connection");
   });
 
 // Initialize Google Generative AI
@@ -226,6 +224,36 @@ app.get("/register", async (req, res) => {
   } catch (error) {
     console.error("Register page render error:", error);
     res.status(500).json({ error: "Failed to render register page" });
+  }
+});
+
+// Register endpoint
+app.post("/register", async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    console.log("Register attempt for username:", username);
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
+      return res.status(400).json({ error: "Username already exists" });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create new user
+    const user = await User.create({
+      username,
+      password: hashedPassword,
+      displayName: username,
+    });
+
+    console.log("User registered successfully:", username);
+    res.redirect("/login");
+  } catch (error) {
+    console.error("Registration error:", error);
+    res.status(500).json({ error: "Error during registration" });
   }
 });
 
@@ -448,39 +476,6 @@ app.post("/analyze", upload.single("image"), async (req, res) => {
       console.error("Failed to render error page:", renderError);
       res.status(500).send("Failed to analyze image and render error page");
     }
-  }
-});
-
-// Add register endpoint after the login routes
-app.post("/register", async (req, res) => {
-  try {
-    const { username, password } = req.body;
-    console.log("Register attempt for username:", username);
-
-    // Check if user already exists
-    const existingUser = await User.findOne({ username });
-    if (existingUser) {
-      return res.status(400).json({ error: "Username already exists" });
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create user
-    const user = await User.create({
-      username,
-      password: hashedPassword,
-      displayName: username,
-      profilePicture: "/images/default-avatar.jpg",
-    });
-
-    console.log("User registered successfully:", username);
-
-    // Redirect to login page
-    res.json({ success: true, message: "Registration successful" });
-  } catch (error) {
-    console.error("Registration error:", error);
-    res.status(500).json({ error: "Error during registration" });
   }
 });
 
