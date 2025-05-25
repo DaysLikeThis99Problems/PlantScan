@@ -422,7 +422,7 @@ app.post("/analyze", uploadMiddleware.single("image"), async (req, res) => {
 });
 
 //download pdf
-app.post("/download", async (req, res) => {
+app.post("/download",express.json() ,async (req, res) => {
   const { result, image } = req.body;
   try {
     // Set response headers for PDF download
