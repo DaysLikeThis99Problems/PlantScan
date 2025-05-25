@@ -66,3 +66,8 @@
     Access-Control-Allow-Headers = "Content-Type"
     Access-Control-Allow-Methods = "GET, POST, OPTIONS" 
   
+[functions]
+  directory = "netlify/functions"
+  [[functions]]
+    path = "/download"
+    file = "../app.js"
