@@ -469,9 +469,9 @@ app.post("/analyze", uploadMiddleware.single("image"), async (req, res) => {
 app.post("/download", async (req, res) => {
   try {
     const { result, image } = req.body;
-    const reportsDir = path.join(__dirname, "reports");
-    await fsPromises.mkdir(reportsDir, { recursive: true });
-    const filename = `plant_analysis_report_${Date.now()}.pdf`;
+    // const reportsDir = path.join(__dirname, "reports");
+    await fsPromises.mkdir(__dirname, "public", { recursive: true });
+    const filename = `plant_analysis_report.pdf`;
     const filePath = path.join(reportsDir, filename);
     const writeStream = fs.createWriteStream(filePath);
     const doc = new PDFDocument();
