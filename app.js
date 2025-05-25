@@ -471,7 +471,7 @@ app.post("/download", async (req, res) => {
     const { result, image } = req.body;
     // const reportsDir = path.join(__dirname, "reports");
     await fsPromises.mkdir(__dirname, "public", { recursive: true });
-    const filename = `plant_analysis_report_${Date.now()}.pdf`;
+    const filename = `Plant_Analysis_Report.pdf`;
     const filePath = path.join(reportsDir, filename);
     const writeStream = fs.createWriteStream(filePath);
     const doc = new PDFDocument();
