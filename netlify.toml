@@ -14,12 +14,6 @@
     "views/**/*",
     "public/**/*"
   ]
-  directory = "netlify/functions"
-  [[
-  functions
-  ]]
-      path = "/download"
-      file = "download.js"
 
 [functions.server]
   maxDuration = 30
