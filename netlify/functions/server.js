@@ -133,16 +133,6 @@ const renderView = async (view, options = {}) => {
   }
 };
 
-// // Log all requests
-// app.use((req, res, next) => {
-//   console.log("Request received:", {
-//     method: req.method,
-//     path: req.path,
-//     contentType: req.headers["content-type"],
-//   });
-//   next();
-// });
-
 // Route handlers
 app.get("/", async (req, res) => {
   try {

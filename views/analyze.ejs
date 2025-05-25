@@ -8,7 +8,6 @@
         max-width: 1200px;
         margin: 0 auto;
         padding: 20px;
-        background: #f5f5f5;
       }
       .container {
         display: flex;
@@ -20,51 +19,28 @@
         padding: 20px;
         border: 2px dashed #ccc;
         border-radius: 8px;
-        margin-bottom: 20px;
-        background: white;
       }
       .preview-image {
         max-width: 300px;
-        margin: 10px auto;
+        margin: 10px 0;
         display: none;
       }
       .result-section {
         display: none;
         margin-top: 20px;
-        padding: 20px;
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       }
-      .analyzed-image-container {
-        margin: 20px auto;
-        padding: 20px;
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        text-align: center;
-        max-width: 800px;
+      .result-container {
+        display: flex;
+        gap: 20px;
       }
-      .image-wrapper {
-        margin: 15px auto;
-        max-width: 600px;
-        background: #f5f5f5;
-        padding: 10px;
-        border-radius: 8px;
-      }
-      .analyzed-image-container img {
-        max-width: 100%;
-        height: auto;
-        margin: 10px auto;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        display: block;
+      .image-container {
+        flex: 1;
       }
       .analysis-container {
+        flex: 2;
         padding: 20px;
         background: #f9f9f9;
         border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       }
       .error {
         color: red;
@@ -93,48 +69,6 @@
       input[type="file"] {
         margin: 10px 0;
       }
-      pre {
-        white-space: pre-wrap;
-        word-wrap: break-word;
-        background: white;
-        padding: 15px;
-        border-radius: 4px;
-        margin: 10px 0;
-      }
-      h2 {
-        color: #333;
-        text-align: center;
-        margin-bottom: 20px;
-      }
-      h3 {
-        color: #333;
-        margin: 0 0 15px 0;
-        padding-bottom: 10px;
-        border-bottom: 2px solid #4caf50;
-      }
-      .download-btn {
-        margin-top: 20px;
-        background: #2196f3;
-        display: none;
-        width: 100%;
-        max-width: 200px;
-      }
-      .download-btn:hover {
-        background: #1976d2;
-      }
-      #analyzedImage {
-        max-width: 100%;
-        height: auto;
-        border-radius: 4px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      }
-      .image-title {
-        font-size: 1.2em;
-        color: #333;
-        margin-bottom: 15px;
-        padding-bottom: 10px;
-        border-bottom: 2px solid #4caf50;
-      }
     </style>
   </head>
   <body>
@@ -142,7 +76,13 @@
       <h1>Plant Analysis</h1>
 
       <!-- Error Display -->
-      <div id="error" class="error"><%- error || '' %></div>
+      <div
+        id="error"
+        class="error"
+        style="display: <%= error ? 'block' : 'none' %>"
+      >
+        <%= error || '' %>
+      </div>
 
       <!-- Upload Section -->
       <div class="upload-section" id="uploadSection">
@@ -167,24 +107,23 @@
       </div>
 
       <!-- Results Section -->
-      <div id="resultSection" class="result-section">
+      <div
+        id="resultSection"
+        class="result-section"
+        style="display: <%= result ? 'block' : 'none' %>"
+      >
         <h2>Analysis Results</h2>
-        <div class="analyzed-image-container">
-          <h3>Analyzed Image</h3>
-          <div class="image-wrapper">
+        <div class="result-container">
+          <div class="image-container">
             <img
-              id="analyzedImage"
+              src="<%= result?.imageUrl || '' %>"
               alt="Analyzed plant"
-              style="max-width: 100%; height: auto; display: none"
+              style="max-width: 100%"
             />
           </div>
-        </div>
-        <div class="analysis-container">
-          <h3>Analysis Details</h3>
-          <pre id="analysisText"></pre>
-          <button id="downloadBtn" class="download-btn">
-            Download PDF Report
-          </button>
+          <div class="analysis-container">
+            <pre><%= result?.analysis || '' %></pre>
+          </div>
         </div>
       </div>
     </div>
@@ -195,9 +134,6 @@
       const loading = document.getElementById("loading");
       const resultSection = document.getElementById("resultSection");
       const errorDiv = document.getElementById("error");
-      const analyzedImage = document.getElementById("analyzedImage");
-      const analysisText = document.getElementById("analysisText");
-      const downloadBtn = document.getElementById("downloadBtn");
 
       // Preview image before upload
       form.image.addEventListener("change", (e) => {
@@ -216,87 +152,43 @@
         errorDiv.style.display = "none";
         loading.style.display = "block";
         resultSection.style.display = "none";
-        downloadBtn.style.display = "none";
-        analyzedImage.style.display = "none";
 
         const formData = new FormData(form);
 
         try {
-          console.log("Submitting form...");
           const response = await fetch("/analyze", {
             method: "POST",
             body: formData,
           });
 
           if (!response.ok) {
-            throw new Error("Failed to analyze image");
-          }
-
-          const jsonResult = await response.json();
-          console.log("Server response:", jsonResult);
-
-          if (jsonResult.error) {
-            throw new Error(jsonResult.error);
-          }
-
-          // Handle the image display
-          if (jsonResult.image) {
-            console.log("Setting image source to:", jsonResult.image);
-
-            // Set up image loading handlers
-            analyzedImage.onload = () => {
-              console.log("Image loaded successfully");
-              analyzedImage.style.display = "block";
-              resultSection.style.display = "block";
-              downloadBtn.style.display = "block";
-              resultSection.scrollIntoView({ behavior: "smooth" });
-            };
-
-            analyzedImage.onerror = (e) => {
-              console.error("Error loading image:", e);
-              errorDiv.textContent = "Failed to load the analyzed image";
-              errorDiv.style.display = "block";
-            };
-
-            // Set the image source (this will trigger onload or onerror)
-            analyzedImage.src = jsonResult.image;
-          }
-
-          // Update analysis text
-          analysisText.textContent = jsonResult.result;
-
-          // Handle download
-          downloadBtn.onclick = async () => {
-            try {
-              const response = await fetch("/download", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  result: jsonResult.result,
-                  image: jsonResult.image,
-                }),
-              });
-
-              if (!response.ok) {
-                throw new Error("Failed to generate PDF");
-              }
-
-              const blob = await response.blob();
-              const url = window.URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = `plant_analysis_report_${Date.now()}.pdf`;
-              document.body.appendChild(a);
-              a.click();
-              window.URL.revokeObjectURL(url);
-              a.remove();
-            } catch (error) {
-              console.error("Download error:", error);
-              alert("Failed to download PDF report: " + error.message);
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.includes("application/json")) {
+              const errorData = await response.json();
+              throw new Error(errorData.error || "Failed to analyze image");
+            } else {
+              const html = await response.text();
+              document.body.innerHTML = html;
+              return;
             }
-          };
+          }
+
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            const jsonResult = await response.json();
+            if (jsonResult.error) {
+              throw new Error(jsonResult.error);
+            }
+            // Update the UI with JSON result
+            resultSection.querySelector("img").src = jsonResult.data.imageUrl;
+            resultSection.querySelector("pre").textContent =
+              jsonResult.data.analysis;
+            resultSection.style.display = "block";
+          } else {
+            // Handle HTML response
+            const html = await response.text();
+            document.body.innerHTML = html;
+          }
         } catch (error) {
           console.error("Analysis error:", error);
           errorDiv.textContent = error.message || "Failed to analyze image";

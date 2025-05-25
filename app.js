@@ -29,9 +29,11 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Something broke!" });
 });
 
-// Configure middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Body parser configuration with increased limits
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+
+// Cookie parser middleware
 app.use(cookieParser());
 
 // Static files middleware
@@ -197,7 +199,6 @@ app.post("/register", async (req, res) => {
   }
 });
 
-
 //Login Route logic
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
@@ -228,55 +229,6 @@ app.post("/login", async (req, res) => {
     res.send("Invalid login credentials");
   }
 });
-// //Login Route logic
-// app.post("/login", async (req, res) => {
-//   try {
-//     const { username, password } = req.body;
-
-//     console.log("Login attempt for username:", username);
-
-//     if (!username || !password) {
-//       return res.status(400).send("Username and password are required");
-//     }
-
-//     //Find the user in the db
-//     const userFound = await User.findOne({ username });
-
-//     if (!userFound) {
-//       console.log("User not found:", username);
-//       return res.status(401).send("Invalid login credentials");
-//     }
-
-//     const isPasswordValid = await bcrypt.compare(password, userFound.password);
-
-//     if (!isPasswordValid) {
-//       console.log("Invalid password for user:", username);
-//       return res.status(401).send("Invalid login credentials");
-//     }
-
-//     // Create cookie with user data
-//     res.cookie(
-//       "userData",
-//       JSON.stringify({
-//         username: userFound.username,
-//         displayName: userFound.displayName || userFound.username,
-//         role: userFound.role,
-//       }),
-//       {
-//         maxAge: 3 * 24 * 60 * 60 * 1000, // 3 days expiration
-//         httpOnly: true,
-//         secure: process.env.NODE_ENV === "production",
-//         sameSite: "strict",
-//       }
-//     );
-
-//     console.log("Successful login for user:", username);
-//     res.redirect("/dashboard");
-//   } catch (error) {
-//     console.error("Login error:", error);
-//     res.status(500).send("An error occurred during login");
-//   }
-// });
 
 //Dashboard Route
 app.get("/dashboard", isAuthenticated, isAdmin, async (req, res) => {
@@ -429,11 +381,6 @@ app.post("/analyze", uploadMiddleware.single("image"), async (req, res) => {
       return res.status(400).json({ error: "No image file uploaded" });
     }
 
-    console.log("File uploaded:", {
-      path: req.file.path,
-      mimetype: req.file.mimetype,
-    });
-
     // Get image data from Cloudinary URL
     const imageResponse = await fetch(req.file.path);
     if (!imageResponse.ok) {
@@ -460,16 +407,10 @@ app.post("/analyze", uploadMiddleware.single("image"), async (req, res) => {
 
     const plantInfo = result.response.text();
 
-    // For debugging
-    console.log(
-      "Analysis completed. Sending response with image URL:",
-      req.file.path
-    );
-
-    // Respond with the analysis result and the Cloudinary URL directly
+    // Respond with the analysis result and the image data
     res.json({
       result: plantInfo,
-      image: req.file.path, // Use the Cloudinary URL directly instead of base64
+      image: `data:${req.file.mimetype};base64,${imageData}`,
     });
   } catch (error) {
     console.error("Error analyzing image:", error);
@@ -482,20 +423,17 @@ app.post("/analyze", uploadMiddleware.single("image"), async (req, res) => {
 
 //download pdf
 app.post("/download", async (req, res) => {
+  const { result, image } = req.body;
   try {
-    const { result, image } = req.body;
-
-    // Create PDF document
-    const doc = new PDFDocument();
-
-    // Set up response headers
+    // Set response headers for PDF download
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
       `attachment; filename=plant_analysis_report_${Date.now()}.pdf`
     );
 
-    // Pipe the PDF to the response
+    // Create PDF document and pipe directly to response
+    const doc = new PDFDocument();
     doc.pipe(res);
 
     // Add content to the PDF
@@ -503,61 +441,29 @@ app.post("/download", async (req, res) => {
       align: "center",
     });
     doc.moveDown();
-    doc.fontSize(16).text(`Date: ${new Date().toLocaleDateString()}`);
+    doc.fontSize(24).text(`Date: ${new Date().toLocaleDateString()}`);
     doc.moveDown();
     doc.fontSize(14).text(result, { align: "left" });
-    doc.moveDown();
 
-    try {
-      if (image) {
-        // If image is a URL (Cloudinary)
-        if (image.startsWith("http")) {
-          // Fetch the image
-          const imageResponse = await fetch(image);
-          if (!imageResponse.ok) {
-            throw new Error(`Failed to fetch image: ${imageResponse.status}`);
-          }
-          const imageBuffer = await imageResponse.arrayBuffer();
-
-          // Add image to PDF
-          doc.image(Buffer.from(imageBuffer), {
-            fit: [500, 300],
-            align: "center",
-            valign: "center",
-          });
-        }
-        // If image is base64
-        else if (image.startsWith("data:image")) {
-          const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
-          const imageBuffer = Buffer.from(base64Data, "base64");
-
-          doc.image(imageBuffer, {
-            fit: [500, 300],
-            align: "center",
-            valign: "center",
-          });
-        }
-      }
-    } catch (imageError) {
-      console.error("Error adding image to PDF:", imageError);
-      // Continue without the image if there's an error
-      doc
-        .moveDown()
-        .fontSize(12)
-        .text("Note: Could not include image in the PDF", { italic: true });
+    //insert image to the pdf
+    if (image) {
+      const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
+      const buffer = Buffer.from(base64Data, "base64");
+      doc.moveDown();
+      doc.image(buffer, {
+        fit: [500, 300],
+        align: "center",
+        valign: "center",
+      });
     }
 
     // Finalize PDF file
     doc.end();
   } catch (error) {
     console.error("Error generating PDF report:", error);
-    // Make sure we haven't started sending the response
-    if (!res.headersSent) {
-      res.status(500).json({
-        error: "An error occurred while generating the PDF report",
-        details: error.message,
-      });
-    }
+    res
+      .status(500)
+      .json({ error: "An error occurred while generating the PDF report" });
   }
 });
 
