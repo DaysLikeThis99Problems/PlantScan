@@ -9,7 +9,7 @@ const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const fetch = require("node-fetch");
 const ejs = require("ejs");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const mongoose = require("mongoose");
 const User = require("../models/user");
 

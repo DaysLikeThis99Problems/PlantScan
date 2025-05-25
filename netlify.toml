@@ -9,7 +9,7 @@
 
 [functions]
   node_bundler = "esbuild"
-  external_node_modules = ["express", "ejs", "multer", "cloudinary", "@google/generative-ai", "mongoose", "bcrypt"]
+  external_node_modules = ["express", "ejs", "multer", "cloudinary", "@google/generative-ai", "mongoose", "bcryptjs"]
   included_files = [
     "views/**/*",
     "public/**/*",
