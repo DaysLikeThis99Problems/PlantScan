@@ -229,6 +229,32 @@ app.post("/login", async (req, res) => {
   }
 });
 
+//!Middlewares
+//!-isAuthenticated (Authentication)
+const isAuthenticated = (req, res, next) => {
+  //Check the user in the cookies
+  const userDataCookie = req.cookies.userData;
+  try {
+    const userData = userDataCookie && JSON.parse(userDataCookie);
+    if (userData && userData.username) {
+      //!Add the login user into the req object
+      req.userData = userData;
+      return next();
+    } else {
+      res.send("You are not login");
+    }
+  } catch (error) {
+    console.log(error);
+  }
+};
+//!-isAdmin (Authorization)
+const isAdmin = (req, res, next) => {
+  if (req.userData && req.userData.role === "user") {
+    return next();
+  } else {
+    res.send("Fobidden: You do not have access, admin only");
+  }
+};
 //Dashboard Route
 app.get("/dashboard", isAuthenticated, isAdmin, async (req, res) => {
   try {
