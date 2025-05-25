@@ -9,7 +9,7 @@
 
 [functions]
   node_bundler = "esbuild"
-  external_node_modules = ["express", "ejs", "multer", "cloudinary", "@google/generative-ai"]
+  external_node_modules = ["pdfkit","express", "ejs", "multer", "cloudinary", "@google/generative-ai"]
   included_files = [
     "views/**/*",
     "public/**/*"
@@ -66,16 +66,3 @@
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Headers = "Content-Type"
     Access-Control-Allow-Methods = "GET, POST, OPTIONS" 
-  
-[[plugins]]
-  package = "netlify-plugin-generate-pdf"
-
-  [plugins.inputs]
-  # It has to begin with http
-  url="https://Plant_Scan.netlify.app/"
-  fileName = "plant_analysis_report.pdf"
-  format = "A4"
-  printBackground = "true"
-  displayHeaderFooter = "true"
-  headerTemplate = "<div>Hello from PDF page header</div>"
-  footerTemplate = "<div>Hello from PDF page footer</div>"
