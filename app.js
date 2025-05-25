@@ -74,19 +74,6 @@ connectWithRetry().catch((error) => {
   process.exit(1);
 });
 
-// Add connection event listeners
-mongoose.connection.on("connected", () => {
-  console.log("Mongoose connected to MongoDB");
-});
-
-mongoose.connection.on("error", (err) => {
-  console.error("Mongoose connection error:", err);
-});
-
-mongoose.connection.on("disconnected", () => {
-  console.log("Mongoose disconnected from MongoDB");
-});
-
 //Post
 const postSchema = new mongoose.Schema(
   {
@@ -213,68 +200,50 @@ app.post("/register", async (req, res) => {
 //Login Route logic
 app.post("/login", async (req, res) => {
   try {
-    console.log("Login request body:", req.body);
-
     const { username, password } = req.body;
 
+    console.log("Login attempt for username:", username);
+
     if (!username || !password) {
-      console.log("Missing credentials:", {
-        username: !!username,
-        password: !!password,
-      });
-      return res
-        .status(400)
-        .json({ error: "Username and password are required" });
+      return res.status(400).send("Username and password are required");
     }
 
-    // Check MongoDB connection
-    if (mongoose.connection.readyState !== 1) {
-      console.error(
-        "MongoDB not connected. Current state:",
-        mongoose.connection.readyState
-      );
-      return res.status(500).json({ error: "Database connection error" });
-    }
-
-    // Find the user
-    const userFound = await User.findOne({ username }).exec();
-    console.log(
-      "User search result:",
-      userFound ? "User found" : "User not found"
-    );
+    //Find the user in the db
+    const userFound = await User.findOne({ username });
 
     if (!userFound) {
-      return res.status(401).json({ error: "Invalid login credentials" });
+      console.log("User not found:", username);
+      return res.status(401).send("Invalid login credentials");
     }
 
-    // Verify password
     const isPasswordValid = await bcrypt.compare(password, userFound.password);
-    console.log("Password validation:", isPasswordValid ? "Valid" : "Invalid");
 
     if (!isPasswordValid) {
-      return res.status(401).json({ error: "Invalid login credentials" });
+      console.log("Invalid password for user:", username);
+      return res.status(401).send("Invalid login credentials");
     }
 
-    // Create user data for cookie
-    const userData = {
-      username: userFound.username,
-      displayName: userFound.displayName || userFound.username,
-      role: userFound.role,
-    };
+    // Create cookie with user data
+    res.cookie(
+      "userData",
+      JSON.stringify({
+        username: userFound.username,
+        displayName: userFound.displayName || userFound.username,
+        role: userFound.role,
+      }),
+      {
+        maxAge: 3 * 24 * 60 * 60 * 1000, // 3 days expiration
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+      }
+    );
 
-    // Set cookie
-    res.cookie("userData", JSON.stringify(userData), {
-      maxAge: 3 * 24 * 60 * 60 * 1000, // 3 days
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
-
-    console.log("Login successful for user:", username);
+    console.log("Successful login for user:", username);
     res.redirect("/dashboard");
   } catch (error) {
     console.error("Login error:", error);
-    res.status(500).json({ error: "An error occurred during login" });
+    res.status(500).send("An error occurred during login");
   }
 });
 
