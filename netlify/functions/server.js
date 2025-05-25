@@ -6,6 +6,11 @@ const fs = require("fs");
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+const fetch = require("node-fetch");
+
+// Initialize Google Generative AI
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Configure cloudinary
 cloudinary.config({
@@ -18,24 +23,36 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: "images-folder",
-    allowed_formats: ["jpg", "jpeg", "png", "gif"],
-    transformation: [{ width: 800, height: 600, crop: "fill" }],
+    folder: "plant-analysis",
+    allowed_formats: ["jpg", "jpeg", "png"],
+    transformation: [{ width: 1024, height: 1024, crop: "limit" }],
+    public_id: (req, file) => `plant_${Date.now()}`,
   },
 });
 
-// Configure multer
+// Configure multer with Cloudinary storage
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
+    fileSize: 5 * 1024 * 1024, // 5MB limit
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith("image/")) {
-      cb(null, true);
-    } else {
-      cb(new Error("Only image files are allowed"));
+    // Check file type
+    if (!file.mimetype.startsWith("image/")) {
+      return cb(new Error("Only image files are allowed"), false);
     }
+
+    // Check file extension
+    const allowedExtensions = ["jpg", "jpeg", "png"];
+    const extension = file.originalname.split(".").pop().toLowerCase();
+    if (!allowedExtensions.includes(extension)) {
+      return cb(
+        new Error("Only .jpg, .jpeg, and .png files are allowed"),
+        false
+      );
+    }
+
+    cb(null, true);
   },
 });
 
@@ -138,33 +155,172 @@ try {
     )
   ) {
     mainApp.post("/analyze", upload.single("image"), async (req, res) => {
+      console.log("Analyze endpoint hit");
+
       try {
+        // Check if file exists
         if (!req.file) {
-          return res.status(400).json({ error: "No file uploaded" });
+          console.log("No file received");
+          return res.status(400).json({
+            success: false,
+            error: "No file uploaded",
+          });
         }
 
-        console.log("File received for analysis:", {
-          path: req.file.path,
-          filename: req.file.filename,
-          mimetype: req.file.mimetype,
+        console.log("File uploaded to Cloudinary:", {
+          url: req.file.path,
+          publicId: req.file.filename,
+          format: req.file.format,
+          size: req.file.size,
         });
 
-        // Get the image data from Cloudinary URL
-        const imageResponse = await fetch(req.file.path);
-        const imageBuffer = await imageResponse.buffer();
-        const imageData = imageBuffer.toString("base64");
+        try {
+          // Get the image data from Cloudinary URL
+          console.log("Fetching image from Cloudinary for analysis...");
+          const imageResponse = await fetch(req.file.path);
+          if (!imageResponse.ok) {
+            throw new Error(
+              `Failed to fetch image: ${imageResponse.statusText}`
+            );
+          }
+
+          const imageBuffer = await imageResponse.buffer();
+          const base64Image = imageBuffer.toString("base64");
+
+          // Analyze with Gemini
+          console.log("Initializing Gemini analysis...");
+          const model = genAI.getGenerativeModel({
+            model: "gemini-pro-vision",
+          });
+
+          const prompt = [
+            "Analyze this plant image and provide: \n1. Plant Species/Name\n2. Plant Health Assessment\n3. Care Instructions\n4. Interesting Facts",
+            {
+              inlineData: {
+                mimeType: req.file.mimetype,
+                data: base64Image,
+              },
+            },
+          ];
+
+          console.log("Sending to Gemini API...");
+          const result = await model.generateContent(prompt);
+
+          if (!result || !result.response) {
+            throw new Error("Invalid response from Gemini API");
+          }
+
+          const analysis = result.response.text();
+          console.log("Analysis received, length:", analysis.length);
+
+          // Send successful response
+          res.json({
+            success: true,
+            data: {
+              analysis: analysis,
+              image: {
+                url: req.file.path,
+                publicId: req.file.filename,
+                format: req.file.format,
+              },
+            },
+          });
+        } catch (analysisError) {
+          console.error("Analysis error:", analysisError);
+          res.status(500).json({
+            success: false,
+            error: "Analysis failed",
+            message: analysisError.message,
+            type: "ANALYSIS_ERROR",
+          });
+        }
+      } catch (error) {
+        console.error("Server error:", error);
+        res.status(500).json({
+          success: false,
+          error: "Server error",
+          message: error.message,
+          type: "SERVER_ERROR",
+        });
+      }
+    });
+  }
+
+  // Add a status check endpoint for the Gemini API
+  if (
+    !mainApp._router.stack.some(
+      (layer) => layer.route && layer.route.path === "/api-status"
+    )
+  ) {
+    mainApp.get("/api-status", async (req, res) => {
+      try {
+        console.log("Testing Gemini API connection...");
+        const model = genAI.getGenerativeAI();
+        const result = await model.generateContent("Test connection");
+        const response = await result.response;
 
         res.json({
-          message: "Image received for analysis",
-          image: `data:${req.file.mimetype};base64,${imageData}`,
+          status: "ok",
+          geminiApi: "connected",
+          message: response.text(),
         });
       } catch (error) {
-        console.error("Analysis error:", error);
+        console.error("API Status check error:", error);
         res.status(500).json({
-          error: "Error processing image",
+          status: "error",
+          geminiApi: "disconnected",
+          error: error.message,
+        });
+      }
+    });
+  }
+
+  // Add a test endpoint for Gemini API
+  if (
+    !mainApp._router.stack.some(
+      (layer) => layer.route && layer.route.path === "/test-gemini"
+    )
+  ) {
+    mainApp.get("/test-gemini", async (req, res) => {
+      try {
+        const model = genAI.getGenerativeAI();
+        const result = await model.generateContent(
+          "Hello, test if Gemini API is working."
+        );
+        const response = await result.response;
+        res.json({
+          message: "Gemini API test successful",
+          response: response.text(),
+        });
+      } catch (error) {
+        console.error("Gemini API test error:", error);
+        res.status(500).json({
+          error: "Gemini API test failed",
           details: error.message,
         });
       }
+    });
+  }
+
+  // Add test upload endpoint
+  if (
+    !mainApp._router.stack.some(
+      (layer) => layer.route && layer.route.path === "/test-upload"
+    )
+  ) {
+    mainApp.post("/test-upload", upload.single("image"), (req, res) => {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+      res.json({
+        success: true,
+        file: {
+          url: req.file.path,
+          publicId: req.file.filename,
+          format: req.file.format,
+          size: req.file.size,
+        },
+      });
     });
   }
 
