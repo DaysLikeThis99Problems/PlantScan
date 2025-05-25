@@ -14,7 +14,10 @@
     "views/**/*",
     "public/**/*"
   ]
-
+[[functions]]
+  path = "/download"
+  function = "server"
+  
 [functions.server]
   maxDuration = 30
 

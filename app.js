@@ -466,19 +466,16 @@ app.post("/analyze", uploadMiddleware.single("image"), async (req, res) => {
 //       .json({ error: "An error occurred while generating the PDF report" });
 //   }
 // });
-app.post("/download", express.json(), async (req, res) => {
-  const { result, image } = req.body;
+app.post("/download", async (req, res) => {
   try {
-    //Ensure the reports directory exists
+    const { result, image } = req.body;
     const reportsDir = path.join(__dirname, "reports");
     await fsPromises.mkdir(reportsDir, { recursive: true });
-    //generate pdf
     const filename = `plant_analysis_report_${Date.now()}.pdf`;
     const filePath = path.join(reportsDir, filename);
     const writeStream = fs.createWriteStream(filePath);
     const doc = new PDFDocument();
     doc.pipe(writeStream);
-    // Add content to the PDF
     doc.fontSize(24).text("Plant Analysis Report", {
       align: "center",
     });
@@ -486,7 +483,6 @@ app.post("/download", express.json(), async (req, res) => {
     doc.fontSize(24).text(`Date: ${new Date().toLocaleDateString()}`);
     doc.moveDown();
     doc.fontSize(14).text(result, { align: "left" });
-    //insert image to the pdf
     if (image) {
       const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
       const buffer = Buffer.from(base64Data, "base64");
@@ -498,7 +494,6 @@ app.post("/download", express.json(), async (req, res) => {
       });
     }
     doc.end();
-    //wait for the pdf to be created
     await new Promise((resolve, reject) => {
       writeStream.on("finish", resolve);
       writeStream.on("error", reject);
@@ -511,9 +506,7 @@ app.post("/download", express.json(), async (req, res) => {
     });
   } catch (error) {
     console.error("Error generating PDF report:", error);
-    res
-      .status(500)
-      .json({ error: "An error occurred while generating the PDF report" });
+    res.status(500).json({ error: "An error occurred while generating the PDF report" });
   }
 });
 
