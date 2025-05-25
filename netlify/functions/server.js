@@ -19,6 +19,12 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+console.log("Cloudinary Configuration:", {
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY ? "present" : "missing",
+  api_secret: process.env.CLOUDINARY_API_SECRET ? "present" : "missing",
+});
+
 // Configure Cloudinary storage
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
@@ -37,8 +43,15 @@ const upload = multer({
     fileSize: 5 * 1024 * 1024, // 5MB limit
   },
   fileFilter: (req, file, cb) => {
+    console.log("Multer processing file:", {
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+    });
+
     // Check file type
     if (!file.mimetype.startsWith("image/")) {
+      console.log("File rejected: not an image");
       return cb(new Error("Only image files are allowed"), false);
     }
 
@@ -46,12 +59,14 @@ const upload = multer({
     const allowedExtensions = ["jpg", "jpeg", "png"];
     const extension = file.originalname.split(".").pop().toLowerCase();
     if (!allowedExtensions.includes(extension)) {
+      console.log("File rejected: invalid extension");
       return cb(
         new Error("Only .jpg, .jpeg, and .png files are allowed"),
         false
       );
     }
 
+    console.log("File accepted");
     cb(null, true);
   },
 });
@@ -80,458 +95,180 @@ const resolvePath = (relativePath) => {
   return cwdPath; // Return default path even if it doesn't exist
 };
 
-// Import the app but wrap in try-catch to handle potential errors
-let app;
-try {
-  // Initialize express if app import fails
-  const baseApp = express();
+// Initialize express app
+const app = express();
 
-  // Essential middleware that might be needed before main app
-  baseApp.use(express.json({ limit: "50mb" }));
-  baseApp.use(express.urlencoded({ extended: true, limit: "50mb" }));
-  baseApp.use(cookieParser());
+// Basic middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-  // Resolve paths
-  const viewsPath = resolvePath("views");
-  const publicPath = resolvePath("public");
-
-  console.log("Paths resolved:", {
-    views: viewsPath,
-    public: publicPath,
-    cwd: process.cwd(),
-    dirname: __dirname,
-  });
-
-  // Configure view engine and static files
-  baseApp.set("views", viewsPath);
-  baseApp.set("view engine", "ejs");
-  baseApp.use(express.static(publicPath));
-
-  // Import main app
-  const mainApp = require("../../app");
-
-  // Ensure paths are set correctly in the main app
-  mainApp.set("views", viewsPath);
-  mainApp.use(express.static(publicPath));
-
-  // Add upload endpoints if they don't exist
-  if (
-    !mainApp._router.stack.some(
-      (layer) => layer.route && layer.route.path === "/upload1"
-    )
-  ) {
-    mainApp.post("/upload1", upload.single("image"), async (req, res) => {
-      try {
-        if (!req.file) {
-          return res.status(400).json({ error: "No file uploaded" });
-        }
-
-        console.log("File upload successful:", {
-          path: req.file.path,
-          filename: req.file.filename,
-          mimetype: req.file.mimetype,
-        });
-
-        res.status(201).json({
-          message: "Image uploaded successfully!",
-          data: {
-            url: req.file.path,
-            public_id: req.file.filename,
-          },
-        });
-      } catch (error) {
-        console.error("Upload error:", error);
-        res.status(500).json({
-          error: "Error uploading image",
-          details: error.message,
-        });
-      }
-    });
-  }
-
-  if (
-    !mainApp._router.stack.some(
-      (layer) => layer.route && layer.route.path === "/analyze"
-    )
-  ) {
-    mainApp.post("/analyze", upload.single("image"), async (req, res) => {
-      console.log("Analyze endpoint hit");
-
-      try {
-        // Check if file exists
-        if (!req.file) {
-          console.log("No file received");
-          return res.status(400).json({
-            success: false,
-            error: "No file uploaded",
-          });
-        }
-
-        console.log("File uploaded to Cloudinary:", {
-          url: req.file.path,
-          publicId: req.file.filename,
-          format: req.file.format,
-          size: req.file.size,
-        });
-
-        try {
-          // Get the image data from Cloudinary URL
-          console.log("Fetching image from Cloudinary for analysis...");
-          const imageResponse = await fetch(req.file.path);
-          if (!imageResponse.ok) {
-            throw new Error(
-              `Failed to fetch image: ${imageResponse.statusText}`
-            );
-          }
-
-          const imageBuffer = await imageResponse.buffer();
-          const base64Image = imageBuffer.toString("base64");
-
-          // Analyze with Gemini
-          console.log("Initializing Gemini analysis...");
-          const model = genAI.getGenerativeModel({
-            model: "gemini-pro-vision",
-          });
-
-          const prompt = [
-            "Analyze this plant image and provide: \n1. Plant Species/Name\n2. Plant Health Assessment\n3. Care Instructions\n4. Interesting Facts",
-            {
-              inlineData: {
-                mimeType: req.file.mimetype,
-                data: base64Image,
-              },
-            },
-          ];
-
-          console.log("Sending to Gemini API...");
-          const result = await model.generateContent(prompt);
-
-          if (!result || !result.response) {
-            throw new Error("Invalid response from Gemini API");
-          }
-
-          const analysis = result.response.text();
-          console.log("Analysis received, length:", analysis.length);
-
-          // Send successful response
-          res.json({
-            success: true,
-            data: {
-              analysis: analysis,
-              image: {
-                url: req.file.path,
-                publicId: req.file.filename,
-                format: req.file.format,
-              },
-            },
-          });
-        } catch (analysisError) {
-          console.error("Analysis error:", analysisError);
-          res.status(500).json({
-            success: false,
-            error: "Analysis failed",
-            message: analysisError.message,
-            type: "ANALYSIS_ERROR",
-          });
-        }
-      } catch (error) {
-        console.error("Server error:", error);
-        res.status(500).json({
-          success: false,
-          error: "Server error",
-          message: error.message,
-          type: "SERVER_ERROR",
-        });
-      }
-    });
-  }
-
-  // Add a status check endpoint for the Gemini API
-  if (
-    !mainApp._router.stack.some(
-      (layer) => layer.route && layer.route.path === "/api-status"
-    )
-  ) {
-    mainApp.get("/api-status", async (req, res) => {
-      try {
-        console.log("Testing Gemini API connection...");
-        const model = genAI.getGenerativeAI();
-        const result = await model.generateContent("Test connection");
-        const response = await result.response;
-
-        res.json({
-          status: "ok",
-          geminiApi: "connected",
-          message: response.text(),
-        });
-      } catch (error) {
-        console.error("API Status check error:", error);
-        res.status(500).json({
-          status: "error",
-          geminiApi: "disconnected",
-          error: error.message,
-        });
-      }
-    });
-  }
-
-  // Add a test endpoint for Gemini API
-  if (
-    !mainApp._router.stack.some(
-      (layer) => layer.route && layer.route.path === "/test-gemini"
-    )
-  ) {
-    mainApp.get("/test-gemini", async (req, res) => {
-      try {
-        const model = genAI.getGenerativeAI();
-        const result = await model.generateContent(
-          "Hello, test if Gemini API is working."
-        );
-        const response = await result.response;
-        res.json({
-          message: "Gemini API test successful",
-          response: response.text(),
-        });
-      } catch (error) {
-        console.error("Gemini API test error:", error);
-        res.status(500).json({
-          error: "Gemini API test failed",
-          details: error.message,
-        });
-      }
-    });
-  }
-
-  // Add test upload endpoint
-  if (
-    !mainApp._router.stack.some(
-      (layer) => layer.route && layer.route.path === "/test-upload"
-    )
-  ) {
-    mainApp.post("/test-upload", upload.single("image"), (req, res) => {
-      if (!req.file) {
-        return res.status(400).json({ error: "No file uploaded" });
-      }
-      res.json({
-        success: true,
-        file: {
-          url: req.file.path,
-          publicId: req.file.filename,
-          format: req.file.format,
-          size: req.file.size,
-        },
-      });
-    });
-  }
-
-  // Merge the apps
-  app = mainApp || baseApp;
-
-  // Add path check middleware
-  app.use((req, res, next) => {
-    console.log("Request path:", req.path);
-    console.log("Available views:", fs.readdirSync(viewsPath));
-    if (req.path.startsWith("/images/")) {
-      console.log("Checking image:", path.join(publicPath, req.path));
-    }
-    next();
-  });
-
-  // Override render to add debugging
-  const originalRender = app.render.bind(app);
-  app.render = function (name, options, callback) {
-    console.log("Rendering view:", name);
-    console.log("Views directory:", this.get("views"));
-    console.log("View engine:", this.get("view engine"));
-    return originalRender(name, options, callback);
-  };
-
-  // Add error handling for multer errors
-  app.use((error, req, res, next) => {
-    if (error instanceof multer.MulterError) {
-      if (error.code === "LIMIT_FILE_SIZE") {
-        return res.status(400).json({
-          error: "File too large",
-          details: "Maximum file size is 10MB",
-        });
-      }
-      return res.status(400).json({
-        error: "File upload error",
-        details: error.message,
-      });
-    }
-    next(error);
-  });
-} catch (error) {
-  console.error("Error importing app:", error);
-  app = express();
-  app.use((req, res) => {
-    res.status(500).json({
-      error: "Server configuration error",
-      details: error.message,
-      paths: {
-        cwd: process.cwd(),
-        dirname: __dirname,
-        views: resolvePath("views"),
-        public: resolvePath("public"),
-      },
-    });
-  });
-}
-
-// Ensure essential middleware is present
-if (!app._router) {
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ extended: true, limit: "50mb" }));
-  app.use(cookieParser());
-}
-
-// Add view engine check middleware
+// Log all requests
 app.use((req, res, next) => {
-  const originalRender = res.render;
-  res.render = function (view, options, callback) {
-    console.log("Rendering view:", view);
-    console.log("Views directory:", app.get("views"));
-    console.log("Available views:", fs.readdirSync(app.get("views")));
-    return originalRender.call(this, view, options, callback);
-  };
+  console.log("Request received:", {
+    method: req.method,
+    path: req.path,
+    contentType: req.headers["content-type"],
+  });
   next();
 });
 
-// Add error handling middleware if not present
-if (!app._router.stack.some((layer) => layer.name === "errorHandler")) {
-  app.use((err, req, res, next) => {
-    console.error("Express error:", err);
-    res.status(err.status || 500).json({
-      error: err.message || "Internal Server Error",
-      details: process.env.NODE_ENV === "development" ? err.stack : undefined,
-      viewsPath: app.get("views"),
-    });
-  });
-}
-
-// Configure serverless options
-const handler = serverless(app, {
-  binary: [
-    "application/octet-stream",
-    "application/pdf",
-    "image/*",
-    "font/*",
-    "application/javascript",
-    "text/css",
-    "text/html",
-    "application/json",
-    "multipart/form-data",
-  ],
-  provider: "aws",
-  basePath: "/.netlify/functions/server",
-  request: {
-    // Copy cookies to headers for compatibility
-    processHeaders: (headers, event) => {
-      if (event.cookies && event.cookies.length) {
-        headers.cookie = event.cookies.join("; ");
-      }
-      if (event.multiValueHeaders && event.multiValueHeaders.Cookie) {
-        headers.cookie = event.multiValueHeaders.Cookie.join("; ");
-      }
-      return headers;
+// Test endpoint
+app.get("/test", (req, res) => {
+  res.json({
+    status: "ok",
+    env: {
+      cloudinary: process.env.CLOUDINARY_CLOUD_NAME ? "configured" : "missing",
+      gemini: process.env.GEMINI_API_KEY ? "configured" : "missing",
     },
-  },
+  });
 });
 
-// Export the handler
-exports.handler = async (event, context) => {
-  // Add error handling
-  try {
-    // Handle preflight requests
-    if (event.httpMethod === "OPTIONS") {
-      return {
-        statusCode: 204,
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Headers": "Content-Type, Authorization, Cookie",
-          "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-          "Access-Control-Allow-Credentials": "true",
+// Upload endpoint
+app.post("/upload", (req, res) => {
+  upload(req, res, async function (err) {
+    if (err) {
+      console.error("Multer error:", err);
+      return res.status(400).json({ error: err.message });
+    }
+
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      console.log("File received:", {
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+      });
+
+      // Upload to Cloudinary
+      const b64 = Buffer.from(req.file.buffer).toString("base64");
+      const dataURI = `data:${req.file.mimetype};base64,${b64}`;
+
+      const cloudinaryResult = await cloudinary.uploader.upload(dataURI, {
+        folder: "plants",
+      });
+
+      console.log("Cloudinary upload successful:", cloudinaryResult.secure_url);
+
+      res.json({
+        success: true,
+        url: cloudinaryResult.secure_url,
+      });
+    } catch (error) {
+      console.error("Upload error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+});
+
+// Analyze endpoint
+app.post("/analyze", (req, res) => {
+  upload(req, res, async function (err) {
+    if (err) {
+      console.error("Multer error:", err);
+      return res.status(400).json({ error: err.message });
+    }
+
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      console.log("File received for analysis:", {
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+      });
+
+      // Upload to Cloudinary
+      const b64 = Buffer.from(req.file.buffer).toString("base64");
+      const dataURI = `data:${req.file.mimetype};base64,${b64}`;
+
+      const cloudinaryResult = await cloudinary.uploader.upload(dataURI, {
+        folder: "plants",
+      });
+
+      console.log("Cloudinary upload successful:", cloudinaryResult.secure_url);
+
+      // Initialize Gemini
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
+
+      // Analyze with Gemini
+      const result = await model.generateContent([
+        "Analyze this plant image and provide: 1) Plant Species 2) Health Status 3) Care Instructions",
+        {
+          inlineData: {
+            mimeType: req.file.mimetype,
+            data: b64,
+          },
         },
-      };
-    }
+      ]);
 
-    // Log request details in development
-    if (process.env.NODE_ENV === "development") {
-      console.log("Request:", {
-        path: event.path,
-        method: event.httpMethod,
-        headers: event.headers,
-        body: event.body ? JSON.parse(event.body) : undefined,
+      const analysis = result.response.text();
+      console.log("Analysis completed, length:", analysis.length);
+
+      res.json({
+        success: true,
+        image: cloudinaryResult.secure_url,
+        analysis: analysis,
       });
+    } catch (error) {
+      console.error("Analysis error:", error);
+      res.status(500).json({ error: error.message });
     }
+  });
+});
 
-    // Process the request
-    const response = await handler(event, context);
+// Error handling
+app.use((err, req, res, next) => {
+  console.error("Global error:", err);
+  res.status(500).json({ error: err.message });
+});
 
-    // Handle binary responses
-    if (event.path === "/download" || event.path === "/download-history") {
-      response.headers = {
-        ...response.headers,
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename=plant_analysis_${Date.now()}.pdf`,
-      };
-    }
+// Create handler
+const handler = serverless(app);
 
-    // Handle static files
-    if (event.path.startsWith("/images/")) {
-      const imagePath = resolvePath(path.join("public", event.path));
-      console.log("Serving image from:", imagePath);
-    }
+// Export handler with CORS
+exports.handler = async (event, context) => {
+  // Add CORS headers
+  const headers = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  };
 
-    // Handle view responses
-    if (
-      response.headers &&
-      response.headers["content-type"] &&
-      response.headers["content-type"].includes("text/html")
-    ) {
-      response.headers["cache-control"] = "no-cache";
-    }
-
-    // Ensure CORS headers are set
-    response.headers = {
-      ...response.headers,
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization, Cookie",
-      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-      "Access-Control-Allow-Credentials": "true",
+  // Handle OPTIONS
+  if (event.httpMethod === "OPTIONS") {
+    return {
+      statusCode: 204,
+      headers,
     };
+  }
 
-    // Log response in development
-    if (process.env.NODE_ENV === "development") {
-      console.log("Response:", {
-        statusCode: response.statusCode,
-        headers: response.headers,
-      });
-    }
+  try {
+    // Log the incoming request
+    console.log("Incoming request:", {
+      method: event.httpMethod,
+      path: event.path,
+      headers: event.headers,
+    });
 
-    return response;
+    const result = await handler(event, context);
+
+    // Add CORS headers to response
+    return {
+      ...result,
+      headers: { ...result.headers, ...headers },
+    };
   } catch (error) {
-    console.error("Function error:", error);
+    console.error("Handler error:", error);
     return {
       statusCode: 500,
-      body: JSON.stringify({
-        error: "Internal server error",
-        message: error.message,
-        details:
-          process.env.NODE_ENV === "development" ? error.stack : undefined,
-        paths: {
-          cwd: process.cwd(),
-          dirname: __dirname,
-          views: resolvePath("views"),
-          public: resolvePath("public"),
-        },
-      }),
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Credentials": "true",
-      },
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ error: error.message }),
     };
   }
 };
