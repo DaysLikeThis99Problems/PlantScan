@@ -96,72 +96,308 @@ const resolvePath = (relativePath) => {
   return cwdPath; // Return default path even if it doesn't exist
 };
 
-// Initialize express app
-const app = express();
+// Import the app but wrap in try-catch to handle potential errors
+let app;
+try {
+  // Initialize express if app import fails
+  const baseApp = express();
 
-// Basic middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+  // Essential middleware that might be needed before main app
+  baseApp.use(express.json({ limit: "50mb" }));
+  baseApp.use(express.urlencoded({ extended: true, limit: "50mb" }));
+  baseApp.use(cookieParser());
 
-// Configure view engine
-app.set("view engine", "ejs");
-app.set("views", path.join(__dirname, "../../views"));
+  // Resolve paths
+  const viewsPath = resolvePath("views");
+  const publicPath = resolvePath("public");
 
-// Serve static files
-app.use(express.static(path.join(__dirname, "../../public")));
-
-// Log incoming requests
-app.use((req, res, next) => {
-  console.log("Request:", {
-    method: req.method,
-    path: req.path,
-    headers: req.headers,
+  console.log("Paths resolved:", {
+    views: viewsPath,
+    public: publicPath,
+    cwd: process.cwd(),
+    dirname: __dirname,
   });
+
+  // Configure view engine and static files
+  baseApp.set("views", viewsPath);
+  baseApp.set("view engine", "ejs");
+  baseApp.use(express.static(publicPath));
+
+  // Import main app
+  const mainApp = require("../../app");
+
+  // Ensure paths are set correctly in the main app
+  mainApp.set("views", viewsPath);
+  mainApp.use(express.static(publicPath));
+
+  // Merge the apps
+  app = mainApp || baseApp;
+
+  // Add path check middleware
+  app.use((req, res, next) => {
+    console.log("Request path:", req.path);
+    console.log("Available views:", fs.readdirSync(viewsPath));
+    if (req.path.startsWith("/images/")) {
+      console.log("Checking image:", path.join(publicPath, req.path));
+    }
+    next();
+  });
+
+  // Override render to add debugging
+  const originalRender = app.render.bind(app);
+  app.render = function (name, options, callback) {
+    console.log("Rendering view:", name);
+    console.log("Views directory:", this.get("views"));
+    console.log("View engine:", this.get("view engine"));
+    return originalRender(name, options, callback);
+  };
+} catch (error) {
+  console.error("Error importing app:", error);
+  app = express();
+  app.use((req, res) => {
+    res.status(500).json({
+      error: "Server configuration error",
+      details: error.message,
+      paths: {
+        cwd: process.cwd(),
+        dirname: __dirname,
+        views: resolvePath("views"),
+        public: resolvePath("public"),
+      },
+    });
+  });
+}
+// Ensure essential middleware is present
+if (!app._router) {
+  app.use(express.json({ limit: "50mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+  app.use(cookieParser());
+}
+// Ensure essential middleware is present
+if (!app._router) {
+  app.use(express.json({ limit: "50mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+  app.use(cookieParser());
+}
+
+// Add view engine check middleware
+app.use((req, res, next) => {
+  const originalRender = res.render;
+  res.render = function (view, options, callback) {
+    console.log("Rendering view:", view);
+    console.log("Views directory:", app.get("views"));
+    console.log("Available views:", fs.readdirSync(app.get("views")));
+    return originalRender.call(this, view, options, callback);
+  };
   next();
 });
 
-// Custom render function for Netlify
-const renderView = async (view, options = {}) => {
-  const viewPath = path.join(__dirname, "../../views", `${view}.ejs`);
+// Add error handling middleware if not present
+if (!app._router.stack.some((layer) => layer.name === "errorHandler")) {
+  app.use((err, req, res, next) => {
+    console.error("Express error:", err);
+    res.status(err.status || 500).json({
+      error: err.message || "Internal Server Error",
+      details: process.env.NODE_ENV === "development" ? err.stack : undefined,
+      viewsPath: app.get("views"),
+    });
+  });
+}
+
+// Configure serverless options
+const handler = serverless(app, {
+  binary: [
+    "application/octet-stream",
+    "application/pdf",
+    "image/*",
+    "font/*",
+    "application/javascript",
+    "text/css",
+    "text/html",
+    "application/json",
+  ],
+  provider: "aws",
+  basePath: "/.netlify/functions/server",
+  request: {
+    // Copy cookies to headers for compatibility
+    processHeaders: (headers, event) => {
+      if (event.cookies && event.cookies.length) {
+        headers.cookie = event.cookies.join("; ");
+      }
+      if (event.multiValueHeaders && event.multiValueHeaders.Cookie) {
+        headers.cookie = event.multiValueHeaders.Cookie.join("; ");
+      }
+      return headers;
+    },
+  },
+});
+
+// Export the handler
+exports.handler = async (event, context) => {
+  // Add error handling
   try {
-    console.log("Rendering view:", viewPath);
-    const html = await ejs.renderFile(viewPath, options);
-    return html;
+    // Handle preflight requests
+    if (event.httpMethod === "OPTIONS") {
+      return {
+        statusCode: 204,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization, Cookie",
+          "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+          "Access-Control-Allow-Credentials": "true",
+        },
+      };
+    }
+
+    // Log request details in development
+    if (process.env.NODE_ENV === "development") {
+      console.log("Request:", {
+        path: event.path,
+        method: event.httpMethod,
+        headers: event.headers,
+        body: event.body ? JSON.parse(event.body) : undefined,
+      });
+    }
+
+    // Process the request
+    const response = await handler(event, context);
+
+    // Handle binary responses
+    if (event.path === "/download" || event.path === "/download-history") {
+      response.headers = {
+        ...response.headers,
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename=plant_analysis_${Date.now()}.pdf`,
+      };
+    }
+
+    // Handle static files
+    if (event.path.startsWith("/images/")) {
+      const imagePath = resolvePath(path.join("public", event.path));
+      console.log("Serving image from:", imagePath);
+    }
+
+    // Handle view responses
+    if (
+      response.headers &&
+      response.headers["content-type"] &&
+      response.headers["content-type"].includes("text/html")
+    ) {
+      response.headers["cache-control"] = "no-cache";
+    }
+
+    // Ensure CORS headers are set
+    response.headers = {
+      ...response.headers,
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, Cookie",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Credentials": "true",
+    };
+
+    // Log response in development
+    if (process.env.NODE_ENV === "development") {
+      console.log("Response:", {
+        statusCode: response.statusCode,
+        headers: response.headers,
+      });
+    }
+
+    return response;
   } catch (error) {
-    console.error("View render error:", error);
-    throw error;
+    console.error("Function error:", error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        error: "Internal server error",
+        message: error.message,
+        details:
+          process.env.NODE_ENV === "development" ? error.stack : undefined,
+        paths: {
+          cwd: process.cwd(),
+          dirname: __dirname,
+          views: resolvePath("views"),
+          public: resolvePath("public"),
+        },
+      }),
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Credentials": "true",
+      },
+    };
   }
 };
 
-// Route handlers
-app.get("/", async (req, res) => {
-  try {
-    const html = await renderView("index");
-    res.send(html);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to render index page" });
-  }
-});
 
-app.get("/login", async (req, res) => {
-  try {
-    const html = await renderView("login");
-    res.send(html);
-  } catch (error) {
-    console.error("Login page render error:", error);
-    res.status(500).json({ error: "Failed to render login page" });
-  }
-});
 
-app.get("/register", async (req, res) => {
-  try {
-    const html = await renderView("register");
-    res.send(html);
-  } catch (error) {
-    console.error("Register page render error:", error);
-    res.status(500).json({ error: "Failed to render register page" });
-  }
-});
+//-------
+// // Initialize express app
+// const app = express();
+
+// // Basic middleware
+// app.use(express.json());
+// app.use(express.urlencoded({ extended: true }));
+
+// // Configure view engine
+// app.set("view engine", "ejs");
+// app.set("views", path.join(__dirname, "../../views"));
+
+// // Serve static files
+// app.use(express.static(path.join(__dirname, "../../public")));
+
+// // Log incoming requests
+// app.use((req, res, next) => {
+//   console.log("Request:", {
+//     method: req.method,
+//     path: req.path,
+//     headers: req.headers,
+//   });
+//   next();
+// });
+
+// // Custom render function for Netlify
+// const renderView = async (view, options = {}) => {
+//   const viewPath = path.join(__dirname, "../../views", `${view}.ejs`);
+//   try {
+//     console.log("Rendering view:", viewPath);
+//     const html = await ejs.renderFile(viewPath, options);
+//     return html;
+//   } catch (error) {
+//     console.error("View render error:", error);
+//     throw error;
+//   }
+// };
+
+// // Route handlers
+// app.get("/", async (req, res) => {
+//   try {
+//     const html = await renderView("index");
+//     res.send(html);
+//   } catch (error) {
+//     res.status(500).json({ error: "Failed to render index page" });
+//   }
+// });
+
+// app.get("/login", async (req, res) => {
+//   try {
+//     const html = await renderView("login");
+//     res.send(html);
+//   } catch (error) {
+//     console.error("Login page render error:", error);
+//     res.status(500).json({ error: "Failed to render login page" });
+//   }
+// });
+
+// app.get("/register", async (req, res) => {
+//   try {
+//     const html = await renderView("register");
+//     res.send(html);
+//   } catch (error) {
+//     console.error("Register page render error:", error);
+//     res.status(500).json({ error: "Failed to render register page" });
+//   }
+// });
 
 // app.get("/dashboard", async (req, res) => {
 //   try {
@@ -177,394 +413,279 @@ app.get("/register", async (req, res) => {
 //     res.status(500).json({ error: "Failed to render dashboard page" });
 //   }
 // });
-//Register Logic (register form)
-app.post("/register", async (req, res) => {
-  try {
-    const { username, password } = req.body;
-    const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user with displayName same as username
-    const user = await User.create({
-      username,
-      password: hashedPassword,
-      displayName: username, // Explicitly set displayName to username
-      profilePicture: "👤", // Using emoji as default profile picture
-    });
+// // Test endpoint
+// app.get("/test", (req, res) => {
+//   res.json({
+//     status: "ok",
+//     env: {
+//       cloudinary: process.env.CLOUDINARY_CLOUD_NAME ? "configured" : "missing",
+//       gemini: process.env.GEMINI_API_KEY ? "configured" : "missing",
+//     },
+//   });
+// });
 
-    res.redirect("/login");
-  } catch (error) {
-    console.error("Error during registration:", error);
-    res.status(500).send("Error during registration");
-  }
-});
+// // Upload endpoint
+// app.post("/upload", (req, res) => {
+//   upload(req, res, async function (err) {
+//     if (err) {
+//       console.error("Multer error:", err);
+//       return res.status(400).json({ error: err.message });
+//     }
 
-//Login Route logic
-app.post("/login", async (req, res) => {
-  const { username, password } = req.body;
-  //!. Find the user in the db
-  const userFound = await User.findOne({
-    username,
-  });
-  if (userFound && (await bcrypt.compare(password, userFound.password))) {
-    //! Create some cookies (cookie);
-    //* Prepare the login user data
-    //? Setting the cookie with the userdata
-    res.cookie(
-      "userData",
-      JSON.stringify({
-        username: userFound.username,
-        displayName: userFound.displayName || userFound.username,
-        role: userFound.role,
-      }),
-      {
-        maxAge: 3 * 24 * 60 * 1000, //3days expiration
-        httpOnly: true,
-        secure: false,
-        sameSite: "strict",
-      }
-    );
-    res.redirect("/dashboard");
-  } else {
-    res.send("Invalid login credentials");
-  }
-});
+//     try {
+//       if (!req.file) {
+//         return res.status(400).json({ error: "No file uploaded" });
+//       }
 
-//!Middlewares
-//!-isAuthenticated (Authentication)
-const isAuthenticated = (req, res, next) => {
-  //Check the user in the cookies
-  const userDataCookie = req.cookies.userData;
-  try {
-    const userData = userDataCookie && JSON.parse(userDataCookie);
-    if (userData && userData.username) {
-      //!Add the login user into the req object
-      req.userData = userData;
-      return next();
-    } else {
-      res.send("You are not login");
-    }
-  } catch (error) {
-    console.log(error);
-  }
-};
-//!-isAdmin (Authorization)
-const isAdmin = (req, res, next) => {
-  if (req.userData && req.userData.role === "user") {
-    return next();
-  } else {
-    res.send("Fobidden: You do not have access, admin only");
-  }
-};
-//Dashboard Route
-app.get("/dashboard", isAuthenticated, isAdmin, async (req, res) => {
-  try {
-    //! Grab the user from the cookie
-    const userData = req.cookies.userData
-      ? JSON.parse(req.cookies.userData)
-      : null;
-    const username = userData ? userData.username : null;
+//       console.log("File received:", {
+//         originalname: req.file.originalname,
+//         mimetype: req.file.mimetype,
+//         size: req.file.size,
+//       });
 
-    if (!username) {
-      return res.redirect("/login");
-    }
+//       // Upload to Cloudinary
+//       const b64 = Buffer.from(req.file.buffer).toString("base64");
+//       const dataURI = `data:${req.file.mimetype};base64,${b64}`;
 
-    // Get full user data from database
-    const user = await User.findOne({ username });
-    if (!user) {
-      res.clearCookie("userData");
-      return res.redirect("/login");
-    }
+//       const cloudinaryResult = await cloudinary.uploader.upload(dataURI, {
+//         folder: "plants",
+//       });
 
-    //! Render the template with user data
-    res.render("dashboard", {
-      username: user.username,
-      displayName: user.displayName || user.username,
-      profilePicture: user.profilePicture || "👤",
-    });
-  } catch (error) {
-    console.error("Dashboard error:", error);
-    res.status(500).send("Error loading dashboard");
-  }
-});
+//       console.log("Cloudinary upload successful:", cloudinaryResult.secure_url);
 
-//Logout Route
-app.get("/logout", (req, res) => {
-  //!Logout
-  res.clearCookie("userData");
-  //redirect
-  res.redirect("/login");
-// Test endpoint
-app.get("/test", (req, res) => {
-  res.json({
-    status: "ok",
-    env: {
-      cloudinary: process.env.CLOUDINARY_CLOUD_NAME ? "configured" : "missing",
-      gemini: process.env.GEMINI_API_KEY ? "configured" : "missing",
-    },
-  });
-});
+//       res.json({
+//         success: true,
+//         url: cloudinaryResult.secure_url,
+//       });
+//     } catch (error) {
+//       console.error("Upload error:", error);
+//       res.status(500).json({ error: error.message });
+//     }
+//   });
+// });
 
-// Upload endpoint
-app.post("/upload", (req, res) => {
-  upload(req, res, async function (err) {
-    if (err) {
-      console.error("Multer error:", err);
-      return res.status(400).json({ error: err.message });
-    }
+// // Analyze endpoint
+// app.get("/analyze", async (req, res) => {
+//   try {
+//     const html = await renderView("analyze", {
+//       error: null,
+//       result: null,
+//     });
+//     res.send(html);
+//   } catch (error) {
+//     console.error("Analyze page render error:", error);
+//     res.status(500).json({ error: "Failed to render analyze page" });
+//   }
+// });
 
-    try {
-      if (!req.file) {
-        return res.status(400).json({ error: "No file uploaded" });
-      }
+// app.post("/analyze", upload.single("image"), async (req, res) => {
+//   console.log("Analyze endpoint hit with request:", {
+//     headers: req.headers,
+//     file: req.file
+//       ? {
+//           path: req.file.path,
+//           mimetype: req.file.mimetype,
+//           size: req.file.size,
+//         }
+//       : "No file",
+//   });
 
-      console.log("File received:", {
-        originalname: req.file.originalname,
-        mimetype: req.file.mimetype,
-        size: req.file.size,
-      });
+//   if (!req.file) {
+//     console.error("No file uploaded");
+//     const error = "Please upload an image file";
 
-      // Upload to Cloudinary
-      const b64 = Buffer.from(req.file.buffer).toString("base64");
-      const dataURI = `data:${req.file.mimetype};base64,${b64}`;
+//     if (req.headers.accept?.includes("application/json")) {
+//       return res.status(400).json({ success: false, error });
+//     }
 
-      const cloudinaryResult = await cloudinary.uploader.upload(dataURI, {
-        folder: "plants",
-      });
+//     const html = await renderView("analyze", { error, result: null });
+//     return res.status(400).send(html);
+//   }
 
-      console.log("Cloudinary upload successful:", cloudinaryResult.secure_url);
+//   try {
+//     console.log("Processing uploaded file:", {
+//       path: req.file.path,
+//       url: req.file.path,
+//       mimetype: req.file.mimetype,
+//       size: req.file.size,
+//     });
 
-      res.json({
-        success: true,
-        url: cloudinaryResult.secure_url,
-      });
-    } catch (error) {
-      console.error("Upload error:", error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-});
+//     // Verify Cloudinary configuration
+//     console.log("Cloudinary config check:", {
+//       cloud_name: process.env.CLOUDINARY_CLOUD_NAME ? "set" : "missing",
+//       api_key: process.env.CLOUDINARY_API_KEY ? "set" : "missing",
+//       api_secret: process.env.CLOUDINARY_API_SECRET ? "set" : "missing",
+//     });
 
-// Analyze endpoint
-app.get("/analyze", async (req, res) => {
-  try {
-    const html = await renderView("analyze", {
-      error: null,
-      result: null,
-    });
-    res.send(html);
-  } catch (error) {
-    console.error("Analyze page render error:", error);
-    res.status(500).json({ error: "Failed to render analyze page" });
-  }
-});
+//     // Verify Gemini API configuration
+//     console.log("Gemini API config check:", {
+//       api_key: process.env.GEMINI_API_KEY ? "set" : "missing",
+//     });
 
-app.post("/analyze", upload.single("image"), async (req, res) => {
-  console.log("Analyze endpoint hit with request:", {
-    headers: req.headers,
-    file: req.file
-      ? {
-          path: req.file.path,
-          mimetype: req.file.mimetype,
-          size: req.file.size,
-        }
-      : "No file",
-  });
+//     // Get image data from Cloudinary URL
+//     console.log("Fetching image from:", req.file.path);
+//     const imageResponse = await fetch(req.file.path);
+//     if (!imageResponse.ok) {
+//       throw new Error(
+//         `Failed to fetch image from Cloudinary: ${imageResponse.status} ${imageResponse.statusText}`
+//       );
+//     }
 
-  if (!req.file) {
-    console.error("No file uploaded");
-    const error = "Please upload an image file";
+//     // Convert response to Buffer using arrayBuffer()
+//     const arrayBuffer = await imageResponse.arrayBuffer();
+//     const imageBuffer = Buffer.from(arrayBuffer);
+//     const base64Image = imageBuffer.toString("base64");
+//     console.log("Successfully converted image to base64");
 
-    if (req.headers.accept?.includes("application/json")) {
-      return res.status(400).json({ success: false, error });
-    }
+//     // Initialize Gemini model
+//     if (!process.env.GEMINI_API_KEY) {
+//       throw new Error("Gemini API key is not configured");
+//     }
 
-    const html = await renderView("analyze", { error, result: null });
-    return res.status(400).send(html);
-  }
+//     const model = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
+//     console.log("Initialized Gemini model");
 
-  try {
-    console.log("Processing uploaded file:", {
-      path: req.file.path,
-      url: req.file.path,
-      mimetype: req.file.mimetype,
-      size: req.file.size,
-    });
+//     // Prepare the analysis prompt
+//     const analysisPrompt = {
+//       text:
+//         "Analyze this plant image and provide the following information in a clear, formatted way:\n" +
+//         "1. Plant Species/Name (both common and scientific names if possible)\n" +
+//         "2. Plant Health Assessment (look for signs of disease, nutrient deficiencies, or stress)\n" +
+//         "3. Care Instructions (watering, sunlight, soil, and temperature requirements)\n" +
+//         "4. Interesting Facts about this plant species",
+//     };
 
-    // Verify Cloudinary configuration
-    console.log("Cloudinary config check:", {
-      cloud_name: process.env.CLOUDINARY_CLOUD_NAME ? "set" : "missing",
-      api_key: process.env.CLOUDINARY_API_KEY ? "set" : "missing",
-      api_secret: process.env.CLOUDINARY_API_SECRET ? "set" : "missing",
-    });
+//     console.log("Sending request to Gemini API");
+//     const result = await model.generateContent([
+//       analysisPrompt,
+//       {
+//         inlineData: {
+//           mimeType: req.file.mimetype,
+//           data: base64Image,
+//         },
+//       },
+//     ]);
 
-    // Verify Gemini API configuration
-    console.log("Gemini API config check:", {
-      api_key: process.env.GEMINI_API_KEY ? "set" : "missing",
-    });
+//     console.log("Received response from Gemini API");
+//     const response = await result.response;
+//     const analysis = response.text();
 
-    // Get image data from Cloudinary URL
-    console.log("Fetching image from:", req.file.path);
-    const imageResponse = await fetch(req.file.path);
-    if (!imageResponse.ok) {
-      throw new Error(
-        `Failed to fetch image from Cloudinary: ${imageResponse.status} ${imageResponse.statusText}`
-      );
-    }
+//     console.log("Analysis completed successfully");
 
-    // Convert response to Buffer using arrayBuffer()
-    const arrayBuffer = await imageResponse.arrayBuffer();
-    const imageBuffer = Buffer.from(arrayBuffer);
-    const base64Image = imageBuffer.toString("base64");
-    console.log("Successfully converted image to base64");
+//     if (req.headers.accept?.includes("application/json")) {
+//       return res.json({
+//         success: true,
+//         data: {
+//           imageUrl: req.file.path,
+//           analysis: analysis,
+//         },
+//       });
+//     }
 
-    // Initialize Gemini model
-    if (!process.env.GEMINI_API_KEY) {
-      throw new Error("Gemini API key is not configured");
-    }
+//     const html = await renderView("analyze", {
+//       error: null,
+//       result: {
+//         imageUrl: req.file.path,
+//         analysis: analysis,
+//       },
+//     });
+//     res.send(html);
+//   } catch (error) {
+//     console.error("Analysis error:", {
+//       message: error.message,
+//       stack: error.stack,
+//       name: error.name,
+//     });
 
-    const model = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
-    console.log("Initialized Gemini model");
+//     const errorMessage = `Failed to analyze image: ${error.message}`;
 
-    // Prepare the analysis prompt
-    const analysisPrompt = {
-      text:
-        "Analyze this plant image and provide the following information in a clear, formatted way:\n" +
-        "1. Plant Species/Name (both common and scientific names if possible)\n" +
-        "2. Plant Health Assessment (look for signs of disease, nutrient deficiencies, or stress)\n" +
-        "3. Care Instructions (watering, sunlight, soil, and temperature requirements)\n" +
-        "4. Interesting Facts about this plant species",
-    };
+//     if (req.headers.accept?.includes("application/json")) {
+//       return res.status(500).json({
+//         success: false,
+//         error: errorMessage,
+//         details: error.stack,
+//       });
+//     }
 
-    console.log("Sending request to Gemini API");
-    const result = await model.generateContent([
-      analysisPrompt,
-      {
-        inlineData: {
-          mimeType: req.file.mimetype,
-          data: base64Image,
-        },
-      },
-    ]);
+//     try {
+//       const html = await renderView("analyze", {
+//         error: errorMessage,
+//         result: null,
+//       });
+//       res.status(500).send(html);
+//     } catch (renderError) {
+//       console.error("Failed to render error page:", renderError);
+//       res.status(500).send("Failed to analyze image and render error page");
+//     }
+//   }
+// });
 
-    console.log("Received response from Gemini API");
-    const response = await result.response;
-    const analysis = response.text();
+// // Error handling
+// app.use((err, req, res, next) => {
+//   console.error("Global error:", err);
 
-    console.log("Analysis completed successfully");
+//   // If it's a view rendering error, try to show an error page
+//   if (err.view) {
+//     renderView("error", { error: err })
+//       .then((html) => res.status(500).send(html))
+//       .catch(() => res.status(500).json({ error: "Server error" }));
+//   } else {
+//     res.status(500).json({
+//       success: false,
+//       error: "Server error",
+//       details: err.message,
+//     });
+//   }
+// });
 
-    if (req.headers.accept?.includes("application/json")) {
-      return res.json({
-        success: true,
-        data: {
-          imageUrl: req.file.path,
-          analysis: analysis,
-        },
-      });
-    }
+// // Create handler
+// const handler = serverless(app, {
+//   binary: ["image/*", "text/html"],
+// });
 
-    const html = await renderView("analyze", {
-      error: null,
-      result: {
-        imageUrl: req.file.path,
-        analysis: analysis,
-      },
-    });
-    res.send(html);
-  } catch (error) {
-    console.error("Analysis error:", {
-      message: error.message,
-      stack: error.stack,
-      name: error.name,
-    });
+// // Export handler with CORS
+// exports.handler = async (event, context) => {
+//   // Add CORS headers
+//   const headers = {
+//     "Access-Control-Allow-Origin": "*",
+//     "Access-Control-Allow-Headers": "Content-Type",
+//     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+//   };
 
-    const errorMessage = `Failed to analyze image: ${error.message}`;
+//   // Handle OPTIONS
+//   if (event.httpMethod === "OPTIONS") {
+//     return {
+//       statusCode: 204,
+//       headers,
+//     };
+//   }
 
-    if (req.headers.accept?.includes("application/json")) {
-      return res.status(500).json({
-        success: false,
-        error: errorMessage,
-        details: error.stack,
-      });
-    }
+//   try {
+//     // Handle the request
+//     const result = await handler(event, context);
 
-    try {
-      const html = await renderView("analyze", {
-        error: errorMessage,
-        result: null,
-      });
-      res.status(500).send(html);
-    } catch (renderError) {
-      console.error("Failed to render error page:", renderError);
-      res.status(500).send("Failed to analyze image and render error page");
-    }
-  }
-});
+//     // Add CORS and content type headers
+//     const responseHeaders = {
+//       ...headers,
+//       ...result.headers,
+//       "Content-Type": result.headers?.["content-type"] || "text/html",
+//     };
 
-// Error handling
-app.use((err, req, res, next) => {
-  console.error("Global error:", err);
-
-  // If it's a view rendering error, try to show an error page
-  if (err.view) {
-    renderView("error", { error: err })
-      .then((html) => res.status(500).send(html))
-      .catch(() => res.status(500).json({ error: "Server error" }));
-  } else {
-    res.status(500).json({
-      success: false,
-      error: "Server error",
-      details: err.message,
-    });
-  }
-});
-
-// Create handler
-const handler = serverless(app, {
-  binary: ["image/*", "text/html"],
-});
-
-// Export handler with CORS
-exports.handler = async (event, context) => {
-  // Add CORS headers
-  const headers = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  };
-
-  // Handle OPTIONS
-  if (event.httpMethod === "OPTIONS") {
-    return {
-      statusCode: 204,
-      headers,
-    };
-  }
-
-  try {
-    // Handle the request
-    const result = await handler(event, context);
-
-    // Add CORS and content type headers
-    const responseHeaders = {
-      ...headers,
-      ...result.headers,
-      "Content-Type": result.headers?.["content-type"] || "text/html",
-    };
-
-    return {
-      ...result,
-      headers: responseHeaders,
-    };
-  } catch (error) {
-    console.error("Handler error:", error);
-    return {
-      statusCode: 500,
-      headers: { ...headers, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        success: false,
-        error: "Server error",
-        details: error.message,
-      }),
-    };
-  }
-};
+//     return {
+//       ...result,
+//       headers: responseHeaders,
+//     };
+//   } catch (error) {
+//     console.error("Handler error:", error);
+//     return {
+//       statusCode: 500,
+//       headers: { ...headers, "Content-Type": "application/json" },
+//       body: JSON.stringify({
+//         success: false,
+//         error: "Server error",
+//         details: error.message,
+//       }),
+//     };
+//   }
+// };
