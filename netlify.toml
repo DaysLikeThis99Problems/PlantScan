@@ -9,27 +9,60 @@
 
 [functions]
   node_bundler = "esbuild"
-  external_node_modules = ["express", "multer", "cloudinary", "@google/generative-ai", "node-fetch"]
-  included_files = ["public/**/*"]
+  external_node_modules = ["express", "ejs", "multer", "cloudinary", "@google/generative-ai"]
+  included_files = [
+    "views/**/*",
+    "public/**/*"
+  ]
 
 [functions.server]
   maxDuration = 30
 
 [[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/server/:splat"
+  from = "/"
+  to = "/.netlify/functions/server"
   status = 200
   force = true
 
 [[redirects]]
-  from = "/*"
-  to = "/index.html"
+  from = "/login"
+  to = "/.netlify/functions/server/login"
   status = 200
+  force = true
+
+[[redirects]]
+  from = "/register"
+  to = "/.netlify/functions/server/register"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/dashboard"
+  to = "/.netlify/functions/server/dashboard"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/analyze"
+  to = "/.netlify/functions/server/analyze"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/static/*"
+  to = "/static/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/functions/server"
+  status = 200
+  force = true
 
 [[headers]]
   for = "/*"
   [headers.values]
     Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
-    Access-Control-Allow-Headers = "Content-Type, Authorization" 
+    Access-Control-Allow-Headers = "Content-Type"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS" 
   

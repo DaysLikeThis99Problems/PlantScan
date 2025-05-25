@@ -381,10 +381,22 @@ app.post("/analyze", uploadMiddleware.single("image"), async (req, res) => {
       return res.status(400).json({ error: "No image file uploaded" });
     }
 
-    // Get the image data from Cloudinary URL
+    console.log("File uploaded:", {
+      path: req.file.path,
+      mimetype: req.file.mimetype,
+    });
+
+    // Get image data from Cloudinary URL
     const imageResponse = await fetch(req.file.path);
-    const imageBuffer = await imageResponse.buffer();
-    const imageData = imageBuffer.toString("base64");
+    if (!imageResponse.ok) {
+      throw new Error(
+        `Failed to fetch image from Cloudinary: ${imageResponse.status} ${imageResponse.statusText}`
+      );
+    }
+
+    // Convert the image data to base64
+    const imageBuffer = await imageResponse.arrayBuffer();
+    const imageData = Buffer.from(imageBuffer).toString("base64");
 
     // Use the Gemini model to analyze the image
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
@@ -400,32 +412,42 @@ app.post("/analyze", uploadMiddleware.single("image"), async (req, res) => {
 
     const plantInfo = result.response.text();
 
-    // Respond with the analysis result and the image data
+    // For debugging
+    console.log(
+      "Analysis completed. Sending response with image URL:",
+      req.file.path
+    );
+
+    // Respond with the analysis result and the Cloudinary URL directly
     res.json({
       result: plantInfo,
-      image: `data:${req.file.mimetype};base64,${imageData}`,
+      image: req.file.path, // Use the Cloudinary URL directly instead of base64
     });
   } catch (error) {
     console.error("Error analyzing image:", error);
-    res
-      .status(500)
-      .json({ error: "An error occurred while analyzing the image" });
+    res.status(500).json({
+      error: "An error occurred while analyzing the image",
+      details: error.message,
+    });
   }
 });
 
 //download pdf
 app.post("/download", async (req, res) => {
-  const { result, image } = req.body;
   try {
-    // Set response headers for PDF download
+    const { result, image } = req.body;
+
+    // Create PDF document
+    const doc = new PDFDocument();
+
+    // Set up response headers
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
       `attachment; filename=plant_analysis_report_${Date.now()}.pdf`
     );
 
-    // Create PDF document and pipe directly to response
-    const doc = new PDFDocument();
+    // Pipe the PDF to the response
     doc.pipe(res);
 
     // Add content to the PDF
@@ -433,29 +455,61 @@ app.post("/download", async (req, res) => {
       align: "center",
     });
     doc.moveDown();
-    doc.fontSize(24).text(`Date: ${new Date().toLocaleDateString()}`);
+    doc.fontSize(16).text(`Date: ${new Date().toLocaleDateString()}`);
     doc.moveDown();
     doc.fontSize(14).text(result, { align: "left" });
+    doc.moveDown();
 
-    //insert image to the pdf
-    if (image) {
-      const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
-      const buffer = Buffer.from(base64Data, "base64");
-      doc.moveDown();
-      doc.image(buffer, {
-        fit: [500, 300],
-        align: "center",
-        valign: "center",
-      });
+    try {
+      if (image) {
+        // If image is a URL (Cloudinary)
+        if (image.startsWith("http")) {
+          // Fetch the image
+          const imageResponse = await fetch(image);
+          if (!imageResponse.ok) {
+            throw new Error(`Failed to fetch image: ${imageResponse.status}`);
+          }
+          const imageBuffer = await imageResponse.arrayBuffer();
+
+          // Add image to PDF
+          doc.image(Buffer.from(imageBuffer), {
+            fit: [500, 300],
+            align: "center",
+            valign: "center",
+          });
+        }
+        // If image is base64
+        else if (image.startsWith("data:image")) {
+          const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
+          const imageBuffer = Buffer.from(base64Data, "base64");
+
+          doc.image(imageBuffer, {
+            fit: [500, 300],
+            align: "center",
+            valign: "center",
+          });
+        }
+      }
+    } catch (imageError) {
+      console.error("Error adding image to PDF:", imageError);
+      // Continue without the image if there's an error
+      doc
+        .moveDown()
+        .fontSize(12)
+        .text("Note: Could not include image in the PDF", { italic: true });
     }
 
     // Finalize PDF file
     doc.end();
   } catch (error) {
     console.error("Error generating PDF report:", error);
-    res
-      .status(500)
-      .json({ error: "An error occurred while generating the PDF report" });
+    // Make sure we haven't started sending the response
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: "An error occurred while generating the PDF report",
+        details: error.message,
+      });
+    }
   }
 });
 

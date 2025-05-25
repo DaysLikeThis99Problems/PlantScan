@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Plant Analysis</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        background: #f5f5f5;
+      }
+      .container {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+      .upload-section {
+        text-align: center;
+        padding: 20px;
+        border: 2px dashed #ccc;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        background: white;
+      }
+      .preview-image {
+        max-width: 300px;
+        margin: 10px auto;
+        display: none;
+      }
+      .result-section {
+        display: none;
+        margin-top: 20px;
+        padding: 20px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .analyzed-image-container {
+        margin: 20px auto;
+        padding: 20px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        max-width: 800px;
+      }
+      .image-wrapper {
+        margin: 15px auto;
+        max-width: 600px;
+        background: #f5f5f5;
+        padding: 10px;
+        border-radius: 8px;
+      }
+      .analyzed-image-container img {
+        max-width: 100%;
+        height: auto;
+        margin: 10px auto;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        display: block;
+      }
+      .analysis-container {
+        padding: 20px;
+        background: #f9f9f9;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .error {
+        color: red;
+        margin: 10px 0;
+        padding: 10px;
+        background: #fff0f0;
+        border-radius: 4px;
+        display: none;
+      }
+      .loading {
+        display: none;
+        text-align: center;
+        padding: 20px;
+      }
+      button {
+        padding: 10px 20px;
+        background: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #45a049;
+      }
+      input[type="file"] {
+        margin: 10px 0;
+      }
+      pre {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        background: white;
+        padding: 15px;
+        border-radius: 4px;
+        margin: 10px 0;
+      }
+      h2 {
+        color: #333;
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      h3 {
+        color: #333;
+        margin: 0 0 15px 0;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #4caf50;
+      }
+      .download-btn {
+        margin-top: 20px;
+        background: #2196f3;
+        display: none;
+        width: 100%;
+        max-width: 200px;
+      }
+      .download-btn:hover {
+        background: #1976d2;
+      }
+      #analyzedImage {
+        max-width: 100%;
+        height: auto;
+        border-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .image-title {
+        font-size: 1.2em;
+        color: #333;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #4caf50;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Plant Analysis</h1>
+
+      <!-- Error Display -->
+      <div id="error" class="error"><%- error || '' %></div>
+
+      <!-- Upload Section -->
+      <div class="upload-section" id="uploadSection">
+        <h2>Upload Plant Image</h2>
+        <form id="analyzeForm" enctype="multipart/form-data">
+          <input
+            type="file"
+            name="image"
+            accept="image/jpeg,image/png"
+            required
+          />
+          <br />
+          <img id="preview" class="preview-image" />
+          <br />
+          <button type="submit">Analyze Plant</button>
+        </form>
+      </div>
+
+      <!-- Loading Indicator -->
+      <div id="loading" class="loading">
+        Analyzing your plant... Please wait...
+      </div>
+
+      <!-- Results Section -->
+      <div id="resultSection" class="result-section">
+        <h2>Analysis Results</h2>
+        <div class="analyzed-image-container">
+          <h3>Analyzed Image</h3>
+          <div class="image-wrapper">
+            <img
+              id="analyzedImage"
+              alt="Analyzed plant"
+              style="max-width: 100%; height: auto; display: none"
+            />
+          </div>
+        </div>
+        <div class="analysis-container">
+          <h3>Analysis Details</h3>
+          <pre id="analysisText"></pre>
+          <button id="downloadBtn" class="download-btn">
+            Download PDF Report
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const form = document.getElementById("analyzeForm");
+      const preview = document.getElementById("preview");
+      const loading = document.getElementById("loading");
+      const resultSection = document.getElementById("resultSection");
+      const errorDiv = document.getElementById("error");
+      const analyzedImage = document.getElementById("analyzedImage");
+      const analysisText = document.getElementById("analysisText");
+      const downloadBtn = document.getElementById("downloadBtn");
+
+      // Preview image before upload
+      form.image.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          preview.src = URL.createObjectURL(file);
+          preview.style.display = "inline";
+        }
+      });
+
+      // Handle form submission
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        // Reset display
+        errorDiv.style.display = "none";
+        loading.style.display = "block";
+        resultSection.style.display = "none";
+        downloadBtn.style.display = "none";
+        analyzedImage.style.display = "none";
+
+        const formData = new FormData(form);
+
+        try {
+          console.log("Submitting form...");
+          const response = await fetch("/analyze", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to analyze image");
+          }
+
+          const jsonResult = await response.json();
+          console.log("Server response:", jsonResult);
+
+          if (jsonResult.error) {
+            throw new Error(jsonResult.error);
+          }
+
+          // Get the image URL from the response
+          const imageUrl =
+            jsonResult.data?.imageUrl ||
+            jsonResult.image ||
+            (jsonResult.result && jsonResult.result.imageUrl);
+          console.log("Image URL from response:", imageUrl);
+
+          if (imageUrl) {
+            // Set up image loading handlers
+            analyzedImage.onload = () => {
+              console.log("Image loaded successfully");
+              analyzedImage.style.display = "block";
+              resultSection.style.display = "block";
+              downloadBtn.style.display = "block";
+              resultSection.scrollIntoView({ behavior: "smooth" });
+            };
+
+            analyzedImage.onerror = (e) => {
+              console.error("Error loading image:", e);
+              errorDiv.textContent = "Failed to load the analyzed image";
+              errorDiv.style.display = "block";
+            };
+
+            // Set the image source (this will trigger onload or onerror)
+            console.log("Setting image source to:", imageUrl);
+            analyzedImage.src = imageUrl;
+          } else {
+            console.error("No image URL found in response");
+            errorDiv.textContent = "No image URL received from server";
+            errorDiv.style.display = "block";
+          }
+
+          // Get the analysis text from the response
+          const analysisText =
+            jsonResult.data?.analysis ||
+            jsonResult.result ||
+            (jsonResult.result && jsonResult.result.analysis);
+          if (analysisText) {
+            document.getElementById("analysisText").textContent = analysisText;
+          }
+
+          // Handle download
+          downloadBtn.onclick = async () => {
+            try {
+              const response = await fetch("/download", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  result: analysisText,
+                  image: imageUrl,
+                }),
+              });
+
+              if (!response.ok) {
+                throw new Error("Failed to generate PDF");
+              }
+
+              const blob = await response.blob();
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `plant_analysis_report_${Date.now()}.pdf`;
+              document.body.appendChild(a);
+              a.click();
+              window.URL.revokeObjectURL(url);
+              a.remove();
+            } catch (error) {
+              console.error("Download error:", error);
+              alert("Failed to download PDF report: " + error.message);
+            }
+          };
+        } catch (error) {
+          console.error("Analysis error:", error);
+          errorDiv.textContent = error.message || "Failed to analyze image";
+          errorDiv.style.display = "block";
+        } finally {
+          loading.style.display = "none";
+        }
+      });
+    </script>
+  </body>
+</html>
