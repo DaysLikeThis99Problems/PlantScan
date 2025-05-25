@@ -222,9 +222,10 @@ app.post("/login", async (req, res) => {
         username: !!username,
         password: !!password,
       });
-      return res
-        .status(400)
-        .json({ error: "Username and password are required" });
+      return res.status(400).json({
+        success: false,
+        error: "Username and password are required",
+      });
     }
 
     // Check MongoDB connection
@@ -233,7 +234,10 @@ app.post("/login", async (req, res) => {
         "MongoDB not connected. Current state:",
         mongoose.connection.readyState
       );
-      return res.status(500).json({ error: "Database connection error" });
+      return res.status(500).json({
+        success: false,
+        error: "Database connection error",
+      });
     }
 
     // Find the user
@@ -244,7 +248,10 @@ app.post("/login", async (req, res) => {
     );
 
     if (!userFound) {
-      return res.status(401).json({ error: "Invalid login credentials" });
+      return res.status(401).json({
+        success: false,
+        error: "Invalid login credentials",
+      });
     }
 
     // Verify password
@@ -252,7 +259,10 @@ app.post("/login", async (req, res) => {
     console.log("Password validation:", isPasswordValid ? "Valid" : "Invalid");
 
     if (!isPasswordValid) {
-      return res.status(401).json({ error: "Invalid login credentials" });
+      return res.status(401).json({
+        success: false,
+        error: "Invalid login credentials",
+      });
     }
 
     // Create user data for cookie
@@ -271,10 +281,18 @@ app.post("/login", async (req, res) => {
     });
 
     console.log("Login successful for user:", username);
-    res.redirect("/dashboard");
+
+    // Return success response with redirect URL
+    res.status(200).json({
+      success: true,
+      redirectUrl: "/dashboard",
+    });
   } catch (error) {
     console.error("Login error:", error);
-    res.status(500).json({ error: "An error occurred during login" });
+    res.status(500).json({
+      success: false,
+      error: "An error occurred during login",
+    });
   }
 });
 

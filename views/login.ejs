@@ -80,7 +80,13 @@
         .addEventListener("submit", async (e) => {
           e.preventDefault();
           const errorMessage = document.getElementById("errorMessage");
+          const submitButton = e.target.querySelector('button[type="submit"]');
+
+          // Reset error message and disable submit button
           errorMessage.style.display = "none";
+          submitButton.disabled = true;
+          submitButton.innerHTML =
+            '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Logging in...';
 
           try {
             const formData = new FormData(e.target);
@@ -97,15 +103,23 @@
 
             const data = await response.json();
 
-            if (!response.ok) {
+            if (!response.ok || !data.success) {
               throw new Error(data.error || "Login failed");
             }
 
             // If login successful, redirect to dashboard
-            window.location.href = "/dashboard";
+            if (data.redirectUrl) {
+              window.location.href = data.redirectUrl;
+            } else {
+              window.location.href = "/dashboard";
+            }
           } catch (error) {
             errorMessage.textContent = error.message;
             errorMessage.style.display = "block";
+
+            // Reset submit button
+            submitButton.disabled = false;
+            submitButton.innerHTML = "Login";
           }
         });
     </script>
