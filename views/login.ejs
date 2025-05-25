@@ -13,26 +13,34 @@
         margin: 5rem auto;
         padding: 15px;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        background: white;
+        border-radius: 8px;
       }
       .login-button {
         width: 100%;
         padding: 10px;
+        margin-top: 20px;
       }
-      .a{
+      .nav-links {
         display: flex;
         justify-content: center;
         align-items: center;
+        margin-top: 20px;
+        gap: 10px;
       }
-      a{
-        margin: 10px 10px;
+      .error-message {
+        color: #dc3545;
+        margin-top: 10px;
+        display: none;
       }
     </style>
   </head>
-  <body>
+  <body class="bg-light">
     <div class="container">
       <div class="login-container">
-        <h1 class="text-center">Login</h1>
-        <form action="/login" method="post">
+        <h1 class="text-center mb-4">Login</h1>
+        <div id="errorMessage" class="error-message text-center"></div>
+        <form id="loginForm" action="/login" method="POST">
           <div class="mb-3">
             <label for="username" class="form-label">Username</label>
             <input
@@ -40,8 +48,8 @@
               class="form-control"
               name="username"
               id="username"
+              required
               placeholder="Enter your username"
-              value="john"
             />
           </div>
           <div class="mb-3">
@@ -51,7 +59,7 @@
               class="form-control"
               name="password"
               id="password"
-              value="123"
+              required
               placeholder="Enter your password"
             />
           </div>
@@ -60,10 +68,46 @@
           </button>
         </form>
       </div>
+      <div class="nav-links">
+        <a href="/register" class="btn btn-outline-primary">Register</a>
+        <a href="/" class="btn btn-outline-secondary">Home</a>
+      </div>
     </div>
-    <div class="a">
-      <a href="/register" class="btn btn-primary cta-button">Register</a>
-      <a href="/" class="btn btn-primary cta-button">Home</a>
-    </div>
+
+    <script>
+      document
+        .getElementById("loginForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const errorMessage = document.getElementById("errorMessage");
+          errorMessage.style.display = "none";
+
+          try {
+            const formData = new FormData(e.target);
+            const response = await fetch("/login", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                username: formData.get("username"),
+                password: formData.get("password"),
+              }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+              throw new Error(data.error || "Login failed");
+            }
+
+            // If login successful, redirect to dashboard
+            window.location.href = "/dashboard";
+          } catch (error) {
+            errorMessage.textContent = error.message;
+            errorMessage.style.display = "block";
+          }
+        });
+    </script>
   </body>
 </html>
