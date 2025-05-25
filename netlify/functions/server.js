@@ -162,45 +162,111 @@ app.get("/register", async (req, res) => {
     res.status(500).json({ error: "Failed to render register page" });
   }
 });
-app.post("/login", async (req, res) => {
-  try {
-    // Handle the login form submission here
-    const { username, password } = req.body;
-    // Authenticate the user
-    // ...
-    res.redirect("/dashboard");
-  } catch (error) {
-    console.error("Error during login:", error);
-    res.status(500).send("Error during login");
-  }
-});
+
+// app.get("/dashboard", async (req, res) => {
+//   try {
+//     // Add any data you want to pass to the dashboard
+//     const dashboardData = {
+//       user: req.user, // If you have user data
+//       recentAnalyses: [], // Add your data here
+//     };
+//     const html = await renderView("dashboard", dashboardData);
+//     res.send(html);
+//   } catch (error) {
+//     console.error("Dashboard page render error:", error);
+//     res.status(500).json({ error: "Failed to render dashboard page" });
+//   }
+// });
+//Register Logic (register form)
 app.post("/register", async (req, res) => {
   try {
-    // Handle the login form submission here
     const { username, password } = req.body;
-    // Authenticate the user
-    // ...
-    res.redirect("/dashboard");
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create user with displayName same as username
+    const user = await User.create({
+      username,
+      password: hashedPassword,
+      displayName: username, // Explicitly set displayName to username
+      profilePicture: "👤", // Using emoji as default profile picture
+    });
+
+    res.redirect("/login");
   } catch (error) {
-    console.error("Error during login:", error);
-    res.status(500).send("Error during login");
-  }
-});
-app.get("/dashboard", async (req, res) => {
-  try {
-    // Add any data you want to pass to the dashboard
-    const dashboardData = {
-      user: req.user, // If you have user data
-      recentAnalyses: [], // Add your data here
-    };
-    const html = await renderView("dashboard", dashboardData);
-    res.send(html);
-  } catch (error) {
-    console.error("Dashboard page render error:", error);
-    res.status(500).json({ error: "Failed to render dashboard page" });
+    console.error("Error during registration:", error);
+    res.status(500).send("Error during registration");
   }
 });
 
+//Login Route logic
+app.post("/login", async (req, res) => {
+  const { username, password } = req.body;
+  //!. Find the user in the db
+  const userFound = await User.findOne({
+    username,
+  });
+  if (userFound && (await bcrypt.compare(password, userFound.password))) {
+    //! Create some cookies (cookie);
+    //* Prepare the login user data
+    //? Setting the cookie with the userdata
+    res.cookie(
+      "userData",
+      JSON.stringify({
+        username: userFound.username,
+        displayName: userFound.displayName || userFound.username,
+        role: userFound.role,
+      }),
+      {
+        maxAge: 3 * 24 * 60 * 1000, //3days expiration
+        httpOnly: true,
+        secure: false,
+        sameSite: "strict",
+      }
+    );
+    res.redirect("/dashboard");
+  } else {
+    res.send("Invalid login credentials");
+  }
+});
+
+//Dashboard Route
+app.get("/dashboard", isAuthenticated, isAdmin, async (req, res) => {
+  try {
+    //! Grab the user from the cookie
+    const userData = req.cookies.userData
+      ? JSON.parse(req.cookies.userData)
+      : null;
+    const username = userData ? userData.username : null;
+
+    if (!username) {
+      return res.redirect("/login");
+    }
+
+    // Get full user data from database
+    const user = await User.findOne({ username });
+    if (!user) {
+      res.clearCookie("userData");
+      return res.redirect("/login");
+    }
+
+    //! Render the template with user data
+    res.render("dashboard", {
+      username: user.username,
+      displayName: user.displayName || user.username,
+      profilePicture: user.profilePicture || "👤",
+    });
+  } catch (error) {
+    console.error("Dashboard error:", error);
+    res.status(500).send("Error loading dashboard");
+  }
+});
+
+//Logout Route
+app.get("/logout", (req, res) => {
+  //!Logout
+  res.clearCookie("userData");
+  //redirect
+  res.redirect("/login");
 // Test endpoint
 app.get("/test", (req, res) => {
   res.json({
