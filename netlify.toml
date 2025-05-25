@@ -14,6 +14,12 @@
     "views/**/*",
     "public/**/*"
   ]
+  directory = "netlify/functions"
+  [[
+  functions
+  ]]
+      path = "/download"
+      file = "download.js"
 
 [functions.server]
   maxDuration = 30
@@ -66,8 +72,3 @@
     Access-Control-Allow-Headers = "Content-Type"
     Access-Control-Allow-Methods = "GET, POST, OPTIONS" 
   
-[functions]
-  directory = "netlify/functions"
-  [[functions]]
-    path = "/download"
-    file = "../app.js"
