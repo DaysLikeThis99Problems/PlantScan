@@ -239,14 +239,10 @@
             throw new Error(jsonResult.error);
           }
 
-          // Get the image URL from the response
-          const imageUrl =
-            jsonResult.data?.imageUrl ||
-            jsonResult.image ||
-            (jsonResult.result && jsonResult.result.imageUrl);
-          console.log("Image URL from response:", imageUrl);
+          // Handle the image display
+          if (jsonResult.image) {
+            console.log("Setting image source to:", jsonResult.image);
 
-          if (imageUrl) {
             // Set up image loading handlers
             analyzedImage.onload = () => {
               console.log("Image loaded successfully");
@@ -263,22 +259,11 @@
             };
 
             // Set the image source (this will trigger onload or onerror)
-            console.log("Setting image source to:", imageUrl);
-            analyzedImage.src = imageUrl;
-          } else {
-            console.error("No image URL found in response");
-            errorDiv.textContent = "No image URL received from server";
-            errorDiv.style.display = "block";
+            analyzedImage.src = jsonResult.image;
           }
 
-          // Get the analysis text from the response
-          const analysisText =
-            jsonResult.data?.analysis ||
-            jsonResult.result ||
-            (jsonResult.result && jsonResult.result.analysis);
-          if (analysisText) {
-            document.getElementById("analysisText").textContent = analysisText;
-          }
+          // Update analysis text
+          analysisText.textContent = jsonResult.result;
 
           // Handle download
           downloadBtn.onclick = async () => {
@@ -289,8 +274,8 @@
                   "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                  result: analysisText,
-                  image: imageUrl,
+                  result: jsonResult.result,
+                  image: jsonResult.image,
                 }),
               });
 
